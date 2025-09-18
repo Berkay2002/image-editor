@@ -113,6 +113,20 @@
     -webkit-line-clamp: 2;
     line-clamp: 2;
   }
+  
+  /* Mobile main panel styles */
+  .mobile-main-panel {
+    background: linear-gradient(135deg, var(--background) 0%, var(--muted) 100%);
+    /* Ensure image stays within bounds */
+    max-width: 100%;
+    max-height: 100vh;
+    min-height: 0; /* Allow flex child to shrink */
+  }
+  
+  .mobile-main-panel > div {
+    min-height: 0; /* Allow nested flex children to shrink */
+    min-width: 0;
+  }
 
   /* Custom scrollbar for desktop left panel */
   @media (min-width: 768px) {

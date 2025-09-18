@@ -70,8 +70,11 @@ export function ImagePreview({
 
     const imageAspectRatio = imageDimensions.width / imageDimensions.height;
     
-    if (isMobile) {
-      // Mobile-specific constraints
+    // Check if we're in a mobile main panel (has mobile-main-image class but not isMobile)
+    const isMobileMainPanel = className?.includes('mobile-main-image') && !isMobile;
+    
+    if (isMobile && !isMobileMainPanel) {
+      // Legacy mobile behavior - for backward compatibility
       const isPortrait = imageAspectRatio < 1;
       
       if (isPortrait) {
@@ -95,7 +98,10 @@ export function ImagePreview({
       }
     }
     
-    // Desktop behavior (unchanged)
+    // Desktop behavior (used for both desktop and mobile main panel)
+    // This ensures mobile main panel behaves like desktop right panel:
+    // - Portrait images cannot exceed panel height
+    // - Landscape images cannot exceed panel width
     const containerAspectRatio = containerSize.width / containerSize.height;
     let finalWidth: string | number;
     let finalHeight: string | number;

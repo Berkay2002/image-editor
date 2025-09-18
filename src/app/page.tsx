@@ -221,77 +221,72 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Layout */}
-      <div className="md:hidden h-full flex flex-col px-4 py-4 max-w-none mx-auto">
-
-
-        {/* Main Content - Mobile */}
-        <div className="flex-1 flex flex-col pb-24">
-          {!state.imageFile ? (
+      <div className="md:hidden h-screen flex flex-col">
+        {!state.imageFile ? (
+          <div className="h-full flex items-center justify-center p-4">
             <ImageDropzone 
               onImageSelect={handleImageSelect}
               error={state.status === 'error' ? state.errorMessage : undefined}
             />
-          ) : (
-            <>
-              {/* Mobile Layout: Main content area with bottom padding for fixed prompt */}
-              <div className="flex-1 flex flex-col space-y-4 overflow-y-auto">
-                {/* Image History - Hidden on mobile, now accessible via sidebar */}
-                
-                {/* Main Image Section */}
-                <div className="flex flex-col space-y-3">
-                  {/* Current Image - Optimized height for mobile */}
-                  <div className="flex flex-col">
-                    <div className="relative w-full max-w-none mx-auto">
-                      <ImagePreview src={currentImageUrl!} alt={currentImageInfo.title} isMobile={true} />
-                      {state.status === 'loading' && (
-                        <div className="absolute top-0 left-0 right-0 bottom-0 bg-black/50 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                          <div className="text-center space-y-3">
-                            <Loader variant="default" size="lg" count={5} duration={0.8} delayStep={150} className="justify-center" />
-                            <div className="space-y-3">
-                              <p className="font-head text-lg font-black text-white">
-                                AI is generating your image...
-                              </p>
-                              <p className="font-sans text-sm text-white/80">
-                                This may take a few moments
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {!currentImageInfo.title.includes('Original') && currentImageInfo.prompt !== 'No prompt' && (
-                      <div className="bg-muted/50 rounded-lg p-2 mt-2">
-                        <p className="font-sans text-xs text-muted-foreground">
-                          <strong>Prompt:</strong> {currentImageInfo.prompt}
+          </div>
+        ) : (
+          <div className="h-full flex flex-col">
+            {/* Main Panel - Similar to desktop right panel */}
+            <div className="flex-1 flex flex-col p-4 pb-0 mobile-main-panel overflow-hidden min-h-0">
+              <div className="flex-1 flex items-center justify-center min-h-0 relative">
+                <ImagePreview 
+                  src={currentImageUrl!} 
+                  alt={currentImageInfo.title}
+                  isMobile={false}
+                  className="mobile-main-image" 
+                />
+                {state.status === 'loading' && (
+                  <div className="absolute inset-0 bg-black/50 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                    <div className="text-center space-y-3">
+                      <Loader variant="default" size="lg" count={5} duration={0.8} delayStep={150} className="justify-center" />
+                      <div className="space-y-3">
+                        <p className="font-head text-lg font-black text-white">
+                          AI is generating your image...
+                        </p>
+                        <p className="font-sans text-sm text-white/80">
+                          This may take a few moments
                         </p>
                       </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Fixed Prompt Input at Bottom - Mobile Only */}
-              <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 md:hidden z-40">
-                <PromptInput
-                  prompt={state.prompt}
-                  onPromptChange={handlePromptChange}
-                  onGenerate={handleGenerate}
-                  isLoading={state.status === 'loading'}
-                />
-                
-                {/* Error Display */}
-                {state.status === 'error' && state.errorMessage && (
-                  <div className="mt-2">
-                    <Alert status="error">
-                      <Alert.Description>{state.errorMessage}</Alert.Description>
-                    </Alert>
+                    </div>
                   </div>
                 )}
               </div>
-            </>
-          )}
-        </div>
+              
+              {/* Image info below the image */}
+              {!currentImageInfo.title.includes('Original') && currentImageInfo.prompt !== 'No prompt' && (
+                <div className="bg-muted/50 rounded-lg p-3 mt-3 flex-shrink-0">
+                  <p className="font-sans text-xs text-muted-foreground">
+                    <strong>Prompt:</strong> {currentImageInfo.prompt}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {/* Prompt Input Area - Below main panel */}
+            <div className="flex-shrink-0 border-t border-border bg-background p-4">
+              <PromptInput
+                prompt={state.prompt}
+                onPromptChange={handlePromptChange}
+                onGenerate={handleGenerate}
+                isLoading={state.status === 'loading'}
+              />
+              
+              {/* Error Display */}
+              {state.status === 'error' && state.errorMessage && (
+                <div className="mt-3">
+                  <Alert status="error">
+                    <Alert.Description>{state.errorMessage}</Alert.Description>
+                  </Alert>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Mobile History Sidebar - Only show when image is uploaded */}
