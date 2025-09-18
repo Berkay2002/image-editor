@@ -5,10 +5,13 @@ import { ImageDropzone } from '@/components/ImageDropzone';
 import { ImagePreview } from '@/components/ImagePreview';
 import { PromptInput } from '@/components/PromptInput';
 import { ImageHistory } from '@/components/ImageHistory';
-import { MobileActionBar } from '@/components/MobileActionBar';
+import { ChatHistory } from '@/components/ChatHistory';
+import { MobileHistorySidebar } from '@/components/MobileHistorySidebar';
+import { ResizablePanels } from '@/components/ResizablePanels';
 import { Alert } from '@/components/retroui/Alert';
 import { Separator } from '@/components/retroui/Separator';
 import { Loader } from '@/components/retroui/loader';
+import { Bot } from 'lucide-react';
 import { editImage } from '@/app/actions/editImage';
 import { downloadBase64Image } from '@/lib/download';
 import { resizeImage, shouldResizeImage } from '@/lib/imageUtils';
@@ -239,24 +242,15 @@ export default function Home() {
 
   // Check if we can generate (for mobile action bar)
   const canGenerate = Boolean(state.imageFile && state.prompt.trim().length > 0 && state.status !== 'loading');
-  const hasOutputImage = Boolean(state.outputImage);
 
   return (
-    <div className="h-screen bg-background overflow-hidden">
-      <div className="h-full flex flex-col px-4 py-4 md:py-8 max-w-none mx-auto md:max-w-4xl">
+    <div className="min-h-screen bg-background">
+      {/* Mobile Layout */}
+      <div className="md:hidden h-full flex flex-col px-4 py-4 max-w-none mx-auto">
 
-        {/* Header - Hidden on mobile, visible on desktop */}
-        <header className="hidden md:block text-center mb-6 md:mb-8 flex-shrink-0">
-          <h1 className="font-head text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-2">
-            AI Image Editor
-          </h1>
-          <p className="font-sans text-sm md:text-base text-muted-foreground">
-            Transform your images with AI-powered editing
-          </p>
-        </header>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col min-h-0">
+        {/* Main Content - Mobile */}
+        <div className="flex-1 flex flex-col">
           {!state.imageFile ? (
             <ImageDropzone 
               onImageSelect={handleImageSelect}
@@ -265,24 +259,15 @@ export default function Home() {
           ) : (
             <>
               {/* Mobile Layout: History at top, Image below, Prompt at bottom */}
-              <div className="md:hidden flex flex-col h-full pb-16">
-                {/* Image History - Compact at very top */}
-                {state.imageHistory.length > 0 && (
-                  <div className="flex-shrink-0 mb-3">
-                    <ImageHistory 
-                      history={state.imageHistory}
-                      currentId={state.currentHistoryId}
-                      onRevert={handleRevert}
-                    />
-                  </div>
-                )}
+              <div className="flex flex-col space-y-4">
+                {/* Image History - Hidden on mobile, now accessible via sidebar */}
                 
                 {/* Main Image Section - Right below history */}
-                <div className="flex-1 flex flex-col space-y-3 min-h-0">
-                  {/* Current Image - Positioned right below history */}
-                  <div className="flex-1 flex flex-col justify-start min-h-0">
-                    <div className="relative w-full max-w-none mx-auto flex-shrink-0">
-                      <ImagePreview src={currentImageUrl!} alt={currentImageInfo.title} />
+                <div className="flex flex-col space-y-3">
+                  {/* Current Image - Constrained height on mobile */}
+                  <div className="flex flex-col">
+                    <div className="relative w-full max-w-none mx-auto">
+                      <ImagePreview src={currentImageUrl!} alt={currentImageInfo.title} isMobile={true} />
                       {state.status === 'loading' && (
                         <div className="absolute top-0 left-0 right-0 bottom-0 bg-black/50 backdrop-blur-sm rounded-lg flex items-center justify-center">
                           <div className="text-center space-y-3">
@@ -301,7 +286,7 @@ export default function Home() {
                     </div>
                     
                     {!currentImageInfo.title.includes('Original') && currentImageInfo.prompt !== 'No prompt' && (
-                      <div className="bg-muted/50 rounded-lg p-2 mt-2 flex-shrink-0">
+                      <div className="bg-muted/50 rounded-lg p-2 mt-2">
                         <p className="font-sans text-xs text-muted-foreground">
                           <strong>Prompt:</strong> {currentImageInfo.prompt}
                         </p>
@@ -311,7 +296,7 @@ export default function Home() {
                 </div>
 
                 {/* Bottom Section: Prompt Input - positioned close to fixed button */}
-                <div className="flex-shrink-0 pt-2">
+                <div className="flex-shrink-0">
                   <PromptInput
                     prompt={state.prompt}
                     onPromptChange={handlePromptChange}
@@ -329,83 +314,114 @@ export default function Home() {
                   )}
                 </div>
               </div>
-
-              {/* Desktop Layout: Original order */}
-              <div className="hidden md:flex md:flex-col md:h-full md:space-y-6">
-                {/* Current Image */}
-                <div className="space-y-4">
-                  <div className="relative w-full max-w-2xl mx-auto">
-                    <ImagePreview src={currentImageUrl!} alt={currentImageInfo.title} />
-                    {state.status === 'loading' && (
-                      <div className="absolute top-0 left-0 right-0 bottom-0 bg-black/50 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                        <div className="text-center space-y-4">
-                          <Loader variant="default" size="lg" count={5} duration={0.8} delayStep={150} className="justify-center" />
-                          <div className="space-y-4">
-                            <p className="font-head text-xl font-black text-white">
-                              AI is generating your image...
-                            </p>
-                            <p className="font-sans text-sm text-white/80">
-                              This may take a few moments
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {!currentImageInfo.title.includes('Original') && currentImageInfo.prompt !== 'No prompt' && (
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <p className="font-sans text-base text-muted-foreground">
-                        <strong>Prompt:</strong> {currentImageInfo.prompt}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <Separator />
-
-                {/* Prompt Input */}
-                <PromptInput
-                  prompt={state.prompt}
-                  onPromptChange={handlePromptChange}
-                  onGenerate={handleGenerate}
-                  isLoading={state.status === 'loading'}
-                />
-
-                {/* Image History */}
-                {state.imageHistory.length > 0 && (
-                  <>
-                    <Separator />
-                    <ImageHistory 
+            </>
+          )}
+        </div>
+        
+        {/* Mobile History Sidebar */}
+        <MobileHistorySidebar
+          history={state.imageHistory}
+          currentId={state.currentHistoryId}
+          onRevert={handleRevert}
+        />
+      </div>
+      
+      {/* Desktop Layout: Resizable Two-Panel */}
+      <div className="hidden md:block">
+        {!state.imageFile ? (
+          /* Desktop dropzone - full width */
+          <div className="h-screen flex items-center justify-center p-8">
+            <div className="w-full max-w-2xl">
+              <ImageDropzone 
+                onImageSelect={handleImageSelect}
+                error={state.status === 'error' ? state.errorMessage : undefined}
+              />
+            </div>
+          </div>
+        ) : (
+          <ResizablePanels
+            defaultLeftWidth={35}
+            minLeftWidth={25}
+            maxLeftWidth={65}
+            leftPanel={
+              <>
+                {/* History Messages - Scrollable */}
+                <div className="flex-1 overflow-y-auto p-4 pb-0 chat-history-scroll">
+                  {state.imageHistory.length > 0 ? (
+                    <ChatHistory 
                       history={state.imageHistory}
                       currentId={state.currentHistoryId}
                       onRevert={handleRevert}
                     />
-                  </>
-                )}
-
-                {/* Error Display */}
-                {state.status === 'error' && state.errorMessage && (
-                  <Alert status="error">
-                    <Alert.Description>{state.errorMessage}</Alert.Description>
-                  </Alert>
-                )}
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-center p-8">
+                      <div className="space-y-4 max-w-[280px]">
+                        <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                          <Bot className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <div className="space-y-2">
+                          <p className="font-head text-base font-bold text-foreground">
+                            Ready to create!
+                          </p>
+                          <p className="font-sans text-sm text-muted-foreground leading-relaxed">
+                            Describe how you want to transform your image using the prompt below and click the ✨ button to generate.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Fixed Prompt Input at Bottom */}
+                <div className="flex-shrink-0 border-t border-border bg-background p-4">
+                  <PromptInput
+                    prompt={state.prompt}
+                    onPromptChange={handlePromptChange}
+                    onGenerate={handleGenerate}
+                    isLoading={state.status === 'loading'}
+                  />
+                  
+                  {/* Error Display */}
+                  {state.status === 'error' && state.errorMessage && (
+                    <div className="mt-2">
+                      <Alert status="error">
+                        <Alert.Description>{state.errorMessage}</Alert.Description>
+                      </Alert>
+                    </div>
+                  )}
+                </div>
+              </>
+            }
+            rightPanel={
+              <div className="flex-1 flex flex-col p-6 image-display-panel overflow-hidden min-h-0">
+                <div className="flex-1 flex items-center justify-center min-h-0 relative">
+                  <ImagePreview 
+                    src={currentImageUrl!} 
+                    alt={currentImageInfo.title}
+                    className="" 
+                  />
+                  {state.status === 'loading' && (
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                      <div className="text-center space-y-4">
+                        <Loader variant="default" size="lg" count={5} duration={0.8} delayStep={150} className="justify-center" />
+                        <div className="space-y-4">
+                          <p className="font-head text-xl font-black text-white">
+                            AI is generating your image...
+                          </p>
+                          <p className="font-sans text-sm text-white/80">
+                            This may take a few moments
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </>
-          )}
-        </div>
+            }
+          />
+        )}
       </div>
       
-      {/* Mobile Action Bar */}
-      {state.imageFile && (
-        <MobileActionBar
-          canGenerate={canGenerate}
-          isLoading={state.status === 'loading'}
-          hasOutputImage={hasOutputImage}
-          onGenerate={handleGenerate}
-          onDownload={handleDownload}
-        />
-      )}
     </div>
   );
 }

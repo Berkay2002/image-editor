@@ -24,16 +24,17 @@ export function ImageHistory({ history, currentId, onRevert }: ImageHistoryProps
 
       {/* Compact History Cards */}
       <ScrollArea className="w-full">
-        <div className="flex gap-2 pb-2">
+        <div className="flex gap-3 pb-2">
           {history.map((item, index) => {
             const isCurrent = item.id === currentId;
             const isAfterCurrent = currentIndex !== -1 && index > currentIndex;
             
             return (
-              <div key={item.id} className="flex-shrink-0">
+              <div key={item.id} className="flex-shrink-0 flex flex-col items-center gap-1">
+                {/* Image Thumbnail */}
                 <div 
                   className={`
-                    group relative w-16 h-16 md:w-20 md:h-20 cursor-pointer transition-all duration-200 overflow-hidden rounded-lg border-2
+                    relative w-16 h-16 md:w-20 md:h-20 transition-all duration-200 overflow-hidden rounded-lg border-2
                     ${isCurrent 
                       ? 'border-primary' 
                       : isAfterCurrent 
@@ -42,7 +43,6 @@ export function ImageHistory({ history, currentId, onRevert }: ImageHistoryProps
                     }
                   `}
                 >
-                  {/* Image Thumbnail */}
                   <Image
                     src={item.imageData.startsWith('data:') ? item.imageData : `data:image/png;base64,${item.imageData}`}
                     alt={item.prompt || 'History image'}
@@ -58,24 +58,28 @@ export function ImageHistory({ history, currentId, onRevert }: ImageHistoryProps
                       <div className="w-2 h-2 bg-primary rounded-full"></div>
                     </div>
                   )}
-                  
-                  {/* Revert button */}
-                  {!isCurrent && (
-                    <div className="absolute inset-0 bg-black/50 opacity-0 transition-opacity duration-200 group-hover:opacity-100 flex items-center justify-center">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="h-6 w-6 p-0 bg-white/90 hover:bg-white text-black"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRevert(item.id);
-                        }}
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
                 </div>
+                
+                {/* Revert button - now outside the image */}
+                {!isCurrent && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 w-12 p-0 text-xs font-medium"
+                    onClick={() => onRevert(item.id)}
+                    disabled={isAfterCurrent}
+                  >
+                    <RotateCcw className="h-2.5 w-2.5 mr-0.5" />
+                    Go
+                  </Button>
+                )}
+                
+                {/* Current label */}
+                {isCurrent && (
+                  <div className="text-xs font-medium text-primary px-1">
+                    Current
+                  </div>
+                )}
               </div>
             );
           })}

@@ -40,65 +40,57 @@ export function PromptInput({
   };
 
   return (
-    <div className="w-full max-w-none md:max-w-2xl mx-auto space-y-4">
-      <div className="space-y-3 md:space-y-4">
-        <label htmlFor="prompt" className="font-head text-base md:text-lg font-black text-foreground block">
-          Describe how you want to edit your image
-        </label>
-        
-        <div className="relative">
+    <div className="w-full space-y-3">
+      {/* Input Row with Textarea and Button */}
+      <div className="flex gap-2 items-end">
+        <div className="flex-1 relative">
           <Textarea
             id="prompt"
-            placeholder="Tap Enter to generate • Shift+Enter for new line"
+            placeholder="Describe how you want to edit your image..."
             value={prompt}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onPromptChange(e.target.value)}
             onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             disabled={isLoading || disabled}
-            className={`min-h-[100px] md:min-h-[100px] resize-none transition-all ${
+            className={`min-h-[80px] resize-none transition-all pr-12 ${
               isFocused ? 'ring-2 ring-blue-500' : ''
             } ${isOverLimit ? 'border-red-500 focus:border-red-500' : ''}`}
           />
           
-          <div className={`absolute bottom-3 right-3 font-sans text-xs font-medium transition-colors ${
+          {/* Character count */}
+          <div className={`absolute bottom-3 right-3 font-sans text-xs font-medium transition-colors pointer-events-none ${
             isOverLimit 
               ? 'text-destructive' 
               : characterCount > MAX_PROMPT_LENGTH * 0.8 
                 ? 'text-primary' 
                 : 'text-muted-foreground'
           }`}>
+            {characterCount > 0 && `${characterCount}/${MAX_PROMPT_LENGTH}`}
           </div>
         </div>
         
-        {isOverLimit && (
-          <p className="font-sans text-sm text-destructive font-medium">
-            Please keep your prompt under {MAX_PROMPT_LENGTH} characters.
-          </p>
-        )}
-      </div>
-
-      <Separator className="hidden md:block" />
-
-      <div className="hidden md:flex flex-col sm:flex-row gap-3 sm:justify-end">
+        {/* Generate Button */}
         <Button
           onClick={onGenerate}
           disabled={!canGenerate}
-          className="flex items-center justify-center gap-2 min-w-[120px] h-12 font-sans font-bold w-full sm:w-auto"
+          className="h-[80px] w-12 flex items-center justify-center p-0 flex-shrink-0"
+          size="sm"
         >
           {isLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Generating...
-            </>
+            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
-            <>
-              <Sparkles className="h-4 w-4" />
-              Generate
-            </>
+            <Sparkles className="h-5 w-5" />
           )}
         </Button>
       </div>
+      
+      {/* Error Message */}
+      {isOverLimit && (
+        <p className="font-sans text-sm text-destructive font-medium">
+          Please keep your prompt under {MAX_PROMPT_LENGTH} characters.
+        </p>
+      )}
     </div>
   );
 }

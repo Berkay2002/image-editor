@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Skeleton } from '@/components/retroui/Skeleton';
 
 interface ImagePreviewProps {
@@ -10,6 +10,7 @@ interface ImagePreviewProps {
   width?: number;
   height?: number;
   className?: string;
+  isMobile?: boolean;
 }
 
 export function ImagePreview({ 
@@ -17,12 +18,41 @@ export function ImagePreview({
   alt = "Preview image", 
   width = 800, 
   height = 600, 
-  className = "" 
+  className = "",
+  isMobile = false
 }: ImagePreviewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState<{width: number, height: number} | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState<{width: number, height: number}>({width: 0, height: 0});
+  const [windowHeight, setWindowHeight] = useState(0);
 
-  const handleLoad = () => {
+  // Update container size and window height on resize and mount
+  useEffect(() => {
+    const updateSizes = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setContainerSize({ width: rect.width, height: rect.height });
+      }
+      if (typeof window !== 'undefined') {
+        setWindowHeight(window.innerHeight);
+      }
+    };
+
+    // Use a small delay to ensure the container is properly rendered
+    const timeoutId = setTimeout(updateSizes, 10);
+    
+    window.addEventListener('resize', updateSizes);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', updateSizes);
+    };
+  }, []);
+
+  const handleLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = event.target as HTMLImageElement;
+    setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
     setIsLoading(false);
     setHasError(false);
   };
@@ -32,9 +62,65 @@ export function ImagePreview({
     setHasError(true);
   };
 
+  // Calculate optimal image size based on aspect ratio and mobile constraints
+  const getImageStyle = () => {
+    if (!imageDimensions || !containerSize.width || !containerSize.height) {
+      return { width: 'auto', height: 'auto', maxWidth: '100%', maxHeight: '100%' };
+    }
+
+    const imageAspectRatio = imageDimensions.width / imageDimensions.height;
+    
+    if (isMobile) {
+      // Mobile-specific constraints
+      const isPortrait = imageAspectRatio < 1;
+      
+      if (isPortrait) {
+        // Portrait images: account for mobile browser UI (address bar, bottom bar)
+        // Use 35% of viewport height to account for ~75% usable height due to browser UI
+        const maxMobileHeight = windowHeight > 0 ? windowHeight * 0.35 : 250;
+        return {
+          width: 'auto',
+          height: 'auto',
+          maxWidth: '100%',
+          maxHeight: `${maxMobileHeight}px`
+        };
+      } else {
+        // Landscape and square images: same width as mobile device
+        return {
+          width: '100%',
+          height: 'auto',
+          maxWidth: '100%',
+          maxHeight: 'none'
+        };
+      }
+    }
+    
+    // Desktop behavior (unchanged)
+    const containerAspectRatio = containerSize.width / containerSize.height;
+    let finalWidth: string | number;
+    let finalHeight: string | number;
+
+    if (imageAspectRatio > containerAspectRatio) {
+      // Image is wider relative to container - fit to width
+      finalWidth = '100%';
+      finalHeight = 'auto';
+    } else {
+      // Image is taller relative to container - fit to height
+      finalWidth = 'auto';
+      finalHeight = '100%';
+    }
+
+    return {
+      width: finalWidth,
+      height: finalHeight,
+      maxWidth: '100%',
+      maxHeight: '100%'
+    };
+  };
+
   if (hasError) {
     return (
-      <div className={`relative w-full max-w-none md:max-w-2xl mx-auto bg-muted rounded-lg flex items-center justify-center min-h-[200px] ${className}`}>
+      <div className={`relative w-full max-w-none mx-auto bg-muted rounded-lg flex items-center justify-center min-h-[200px] ${className}`}>
         <div className="text-center p-6 md:p-8">
           <p className="font-sans text-sm md:text-base text-muted-foreground mb-2 font-medium">Failed to load image</p>
           <p className="font-sans text-xs md:text-sm text-muted-foreground">Please try uploading a different image</p>
@@ -44,7 +130,10 @@ export function ImagePreview({
   }
 
   return (
-    <div className={`relative w-full max-w-none md:max-w-2xl mx-auto ${className}`}>
+    <div 
+      ref={containerRef}
+      className={`relative flex items-center justify-center w-full h-full ${className}`}
+    >
       {isLoading && (
         <Skeleton className="w-full aspect-[4/3] md:aspect-[4/3] rounded-lg" />
       )}
@@ -52,14 +141,16 @@ export function ImagePreview({
       <Image
         src={src}
         alt={alt}
-        width={width}
-        height={height}
-        className={`w-full h-auto rounded-lg shadow-lg transition-opacity object-contain ${
-          isLoading ? 'opacity-0' : 'opacity-100'
+        width={imageDimensions?.width || width}
+        height={imageDimensions?.height || height}
+        className={`rounded-lg shadow-lg transition-opacity object-contain ${
+          isLoading ? 'opacity-0 absolute' : 'opacity-100'
         }`}
+        style={getImageStyle()}
         onLoad={handleLoad}
         onError={handleError}
         priority
+        unoptimized
       />
     </div>
   );
