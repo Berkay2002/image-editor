@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Textarea } from '@/components/retroui/Textarea';
 import { Button } from '@/components/retroui/Button';
 import { Loader2, Sparkles, Plus, X } from 'lucide-react';
+import { createThumbnail } from '@/lib/imageUtils';
 
 interface PromptInputProps {
   prompt: string;
@@ -28,10 +29,65 @@ export function PromptInput({
 }: PromptInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [thumbnailUrls, setThumbnailUrls] = useState<string[]>([]);
 
   const characterCount = prompt.length;
   const isOverLimit = characterCount > MAX_PROMPT_LENGTH;
   const canGenerate = prompt.trim().length > 0 && !isOverLimit && !isLoading && !disabled;
+
+  // Generate thumbnails when additional images change
+  useEffect(() => {
+    const generateThumbnails = async () => {
+      // Clean up old thumbnail URLs
+      thumbnailUrls.forEach(url => {
+        if (url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+
+      if (additionalImages.length === 0) {
+        setThumbnailUrls([]);
+        return;
+      }
+
+      try {
+        const newThumbnailUrls: string[] = [];
+
+        for (const image of additionalImages) {
+          // Create compressed thumbnail
+          const thumbnail = await createThumbnail(image, 64, 0.7); // 64px max, 70% quality
+          const thumbnailUrl = URL.createObjectURL(thumbnail);
+          newThumbnailUrls.push(thumbnailUrl);
+        }
+
+        setThumbnailUrls(newThumbnailUrls);
+      } catch (error) {
+        console.warn('Failed to generate thumbnails:', error);
+        // Fall back to original image URLs
+        const fallbackUrls = additionalImages.map(image => URL.createObjectURL(image));
+        setThumbnailUrls(fallbackUrls);
+      }
+    };
+
+    generateThumbnails();
+
+    // Cleanup function for when dependencies change
+    return () => {
+      // This will clean up thumbnails when additionalImages changes
+    };
+  }, [additionalImages]); // Only depend on additionalImages, not thumbnailUrls
+
+  // Cleanup on unmount - use ref to avoid dependency
+  useEffect(() => {
+    const currentThumbnails = thumbnailUrls;
+    return () => {
+      currentThumbnails.forEach(url => {
+        if (url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, [thumbnailUrls]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Trigger generation on Enter (but not Shift+Enter for new lines)
@@ -91,7 +147,7 @@ export function PromptInput({
             <div key={index} className="relative group">
               <div className="w-16 h-16 bg-muted rounded border-2 border-border overflow-hidden">
                 <img
-                  src={URL.createObjectURL(image)}
+                  src={thumbnailUrls[index] || URL.createObjectURL(image)}
                   alt={`Additional image ${index + 1}`}
                   className="w-full h-full object-cover"
                 />

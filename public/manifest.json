@@ -42,5 +42,33 @@
   ],
   "categories": ["photo", "graphics", "productivity", "utilities"],
   "lang": "en",
-  "dir": "ltr"
+  "dir": "ltr",
+  "shortcuts": [
+    {
+      "name": "New Image Edit",
+      "short_name": "New Edit",
+      "description": "Start editing a new image",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Recent Edits",
+      "short_name": "Recent",
+      "description": "View your recent image edits",
+      "url": "/?view=history",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
 }

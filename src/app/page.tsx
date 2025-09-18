@@ -9,9 +9,11 @@ import { MobileHistorySidebar } from '@/components/MobileHistorySidebar';
 import { ResizablePanels } from '@/components/ResizablePanels';
 import { Alert } from '@/components/retroui/Alert';
 import { Loader } from '@/components/retroui/loader';
+import { PWAInstallButton } from '@/components/PWAInstallButton';
+import { PWAUpdateNotification } from '@/components/PWAUpdateNotification';
 import { Bot, Upload } from 'lucide-react';
 import { editImage } from '@/app/actions/editImage';
-import { resizeImage, shouldResizeImage } from '@/lib/imageUtils';
+import { resizeImage, shouldResizeImage, batchResizeForAPI, fileToDataURL } from '@/lib/imageUtils';
 import { loadHistory, saveHistory, createHistoryItem } from '@/lib/historyUtils';
 import { AppState } from '@/types';
 
@@ -44,13 +46,12 @@ export default function Home() {
   }, []);
 
   const handleImageSelect = async (file: File) => {
-    // Convert file to base64 for history
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64Data = e.target?.result as string;
+    try {
+      // Convert file to compressed base64 for history storage
+      const base64Data = await fileToDataURL(file, true); // true = compress for storage
       const originalItem = createHistoryItem(base64Data, '', true);
       const newHistory = [originalItem];
-      
+
       setState(prev => ({
         ...prev,
         imageFile: file,
@@ -62,10 +63,16 @@ export default function Home() {
         currentHistoryId: originalItem.id,
         skippedInitialImage: false // Reset skip flag when image is selected
       }));
-      
+
       saveHistory(newHistory);
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error processing image:', error);
+      setState(prev => ({
+        ...prev,
+        status: 'error',
+        errorMessage: 'Failed to process the selected image. Please try again.'
+      }));
+    }
   };
 
   const handlePromptChange = (prompt: string) => {
@@ -82,13 +89,11 @@ export default function Home() {
         const mainImage = images[0];
         const remainingImages = images.slice(1);
         
-        // Convert the main image to base64 for history
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const base64Data = e.target?.result as string;
+        // Convert the main image to compressed base64 for history
+        fileToDataURL(mainImage, true).then((base64Data) => {
           const originalItem = createHistoryItem(base64Data, '', true);
           const newHistory = [originalItem];
-          
+
           setState(current => ({
             ...current,
             imageFile: mainImage,
@@ -96,10 +101,11 @@ export default function Home() {
             imageHistory: newHistory,
             currentHistoryId: originalItem.id
           }));
-          
+
           saveHistory(newHistory);
-        };
-        reader.readAsDataURL(mainImage);
+        }).catch((error) => {
+          console.error('Error processing additional image as main:', error);
+        });
         
         return newState; // This will be overwritten by the reader.onload, but we return it for now
       }
@@ -175,21 +181,34 @@ export default function Home() {
         }
         formData.append('prompt', state.prompt);
         
-        // Add additional images if any
-        for (const additionalImage of state.additionalImages) {
-          formData.append('additionalImages', additionalImage);
+        // Resize and add additional images if any
+        if (state.additionalImages.length > 0) {
+          console.log('Optimizing additional images for API...');
+          const optimizedAdditionalImages = await batchResizeForAPI(state.additionalImages, 3, 1920);
+          for (const optimizedImage of optimizedAdditionalImages) {
+            formData.append('additionalImages', optimizedImage);
+          }
         }
         
         const result = await editImage(formData);
         
         if (result.success && result.data) {
-          // Create new history item for the generated image
-          const newHistoryItem = createHistoryItem(`data:image/png;base64,${result.data}`, state.prompt);
-          
+          // Create compressed version for history storage
+          const imageData = `data:image/png;base64,${result.data}`;
+
+          // Convert base64 to blob, then to File for compression
+          const response = await fetch(imageData);
+          const blob = await response.blob();
+          const imageFile = new File([blob], 'generated-image.png', { type: 'image/png' });
+
+          // Get compressed version for storage
+          const compressedData = await fileToDataURL(imageFile, true);
+          const newHistoryItem = createHistoryItem(compressedData, state.prompt);
+
           // Always append new generated images to history
           // This creates a linear history: Original → Gen1 → Gen2 → Gen3...
           const updatedHistory = [...state.imageHistory, newHistoryItem];
-          
+
           setState(prev => ({
             ...prev,
             outputImage: result.data!,
@@ -198,7 +217,7 @@ export default function Home() {
             imageHistory: updatedHistory,
             currentHistoryId: newHistoryItem.id
           }));
-          
+
           saveHistory(updatedHistory);
         } else {
           setState(prev => ({
@@ -303,12 +322,13 @@ export default function Home() {
             <div className="flex-1 flex flex-col p-4 pb-0 mobile-main-panel overflow-hidden min-h-0 mobile-safe-left mobile-safe-right">
               <div className="flex-1 flex items-center justify-center min-h-0 relative">
                 {currentImageUrl ? (
-                  <ImagePreview 
-                    src={currentImageUrl} 
+                  <ImagePreview
+                    src={currentImageUrl}
                     alt={currentImageInfo.title}
                     isMobile={false}
-                    className="mobile-main-image" 
+                    className="mobile-main-image"
                     isLoading={state.status === 'loading'}
+                    optimizeForContainer={true}
                   />
                 ) : state.status === 'loading' ? (
                   <div className="flex items-center justify-center w-full h-full text-center p-6">
@@ -453,11 +473,12 @@ export default function Home() {
               <div className="flex-1 flex flex-col p-6 image-display-panel overflow-hidden min-h-0">
                 <div className="flex-1 flex items-center justify-center min-h-0 relative">
                   {currentImageUrl ? (
-                    <ImagePreview 
-                      src={currentImageUrl} 
+                    <ImagePreview
+                      src={currentImageUrl}
                       alt={currentImageInfo.title}
-                      className="" 
+                      className=""
                       isLoading={state.status === 'loading'}
+                      optimizeForContainer={true}
                     />
                   ) : state.status === 'loading' ? (
                     <div className="flex items-center justify-center w-full h-full text-center p-8">
@@ -498,7 +519,20 @@ export default function Home() {
           />
         )}
       </div>
-      
+
+      {/* PWA Install Button - Mobile */}
+      <div className="md:hidden fixed top-4 right-4 z-40">
+        <PWAInstallButton />
+      </div>
+
+      {/* PWA Install Button - Desktop */}
+      <div className="hidden md:block fixed top-4 right-4 z-40">
+        <PWAInstallButton />
+      </div>
+
+      {/* PWA Update Notification */}
+      <PWAUpdateNotification />
+
     </div>
   );
 }

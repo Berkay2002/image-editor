@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
 import { Skeleton } from '@/components/retroui/Skeleton';
 import { Loader } from '@/components/retroui/loader';
+import { optimizeForDisplay } from '@/lib/imageUtils';
 
 interface ImagePreviewProps {
   src: string;
@@ -13,16 +14,18 @@ interface ImagePreviewProps {
   className?: string;
   isMobile?: boolean;
   isLoading?: boolean;
+  optimizeForContainer?: boolean; // New prop to enable container-aware optimization
 }
 
-export function ImagePreview({ 
-  src, 
-  alt = "Preview image", 
-  width = 800, 
-  height = 600, 
+export function ImagePreview({
+  src,
+  alt = "Preview image",
+  width = 800,
+  height = 600,
   className = "",
   isMobile = false,
-  isLoading: externalLoading = false
+  isLoading: externalLoading = false,
+  optimizeForContainer = false
 }: ImagePreviewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -30,6 +33,8 @@ export function ImagePreview({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState<{width: number, height: number}>({width: 0, height: 0});
   const [windowHeight, setWindowHeight] = useState(0);
+  const [optimizedSrc, setOptimizedSrc] = useState<string>(src);
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   // Update container size and window height on resize and mount
   useEffect(() => {
@@ -52,6 +57,72 @@ export function ImagePreview({
       window.removeEventListener('resize', updateSizes);
     };
   }, []);
+
+  // Optimize image for display when container size changes (if enabled)
+  useEffect(() => {
+    if (!optimizeForContainer || !containerSize.width || !containerSize.height || isOptimizing) {
+      return;
+    }
+
+    // Only optimize if the image is a blob URL or data URL (user uploaded image)
+    if (src.startsWith('blob:') || src.startsWith('data:')) {
+      const optimizeImage = async () => {
+        try {
+          setIsOptimizing(true);
+
+          // Convert src to File object
+          const response = await fetch(src);
+          const blob = await response.blob();
+          const file = new File([blob], 'image.jpg', { type: blob.type || 'image/jpeg' });
+
+          // Optimize for current container size
+          const optimized = await optimizeForDisplay(
+            file,
+            containerSize.width,
+            containerSize.height,
+            0.9
+          );
+
+          // Create new blob URL for optimized image
+          const optimizedUrl = URL.createObjectURL(optimized);
+          setOptimizedSrc(optimizedUrl);
+
+          // Clean up old blob URL if it's different
+          if (src.startsWith('blob:') && src !== optimizedUrl) {
+            URL.revokeObjectURL(src);
+          }
+        } catch (error) {
+          console.warn('Failed to optimize image for display:', error);
+          // Fall back to original src
+          setOptimizedSrc(src);
+        } finally {
+          setIsOptimizing(false);
+        }
+      };
+
+      // Debounce optimization to avoid excessive calls
+      const timeoutId = setTimeout(optimizeImage, 300);
+      return () => clearTimeout(timeoutId);
+    } else {
+      // For non-blob URLs, use original src
+      setOptimizedSrc(src);
+    }
+  }, [src, containerSize.width, containerSize.height, optimizeForContainer, isOptimizing]);
+
+  // Reset optimized src when src changes
+  useEffect(() => {
+    setOptimizedSrc(src);
+    setIsOptimizing(false);
+  }, [src]);
+
+  // Cleanup blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (optimizedSrc.startsWith('blob:') && optimizedSrc !== src) {
+        URL.revokeObjectURL(optimizedSrc);
+      }
+    };
+  }, [optimizedSrc, src]);
 
   const handleLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
     const img = event.target as HTMLImageElement;
@@ -148,12 +219,12 @@ export function ImagePreview({
       )}
       
       <Image
-        src={src}
+        src={optimizedSrc}
         alt={alt}
         width={imageDimensions?.width || width}
         height={imageDimensions?.height || height}
         className={`rounded-lg shadow-lg transition-opacity object-contain ${
-          isLoading ? 'opacity-0 absolute' : 'opacity-100'
+          isLoading || isOptimizing ? 'opacity-0 absolute' : 'opacity-100'
         }`}
         style={getImageStyle()}
         onLoad={handleLoad}
