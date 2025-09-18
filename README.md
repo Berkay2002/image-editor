@@ -1,35 +1,50 @@
 # AI Image Editor
 
-A Next.js application that uses Google's Gemini 2.5 Flash Image Preview API (aka "Nano Banana") to edit images based on text prompts. Upload an image, describe how you'd like to edit it, and let AI transform your vision into reality.
+A modern, mobile-first AI-powered image editing application built with Next.js 15 and Google's Generative AI. Transform your images with natural language prompts and maintain a complete editing history.
 
-## Features
+![AI Image Editor](https://img.shields.io/badge/Next.js-15.5.3-black?style=flat-square&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat-square&logo=tailwindcss)
+![Mobile First](https://img.shields.io/badge/Mobile-First-green?style=flat-square)
 
-- 🖼️ **Drag & Drop Upload**: Easy image uploading with validation
-- 🎨 **AI-Powered Editing**: Uses Google's Gemini 2.5 Flash Image Preview model
-- ✨ **Text-to-Edit**: Describe changes in natural language
-- 💾 **Download Results**: Save edited images with a single click
-- 🎯 **Modern UI**: Built with Shadcn UI and Tailwind CSS
-- 🔒 **Type Safe**: Full TypeScript implementation
+## ✨ Features
 
-## Tech Stack
+### 🎨 **AI-Powered Image Editing**
+- Transform images using natural language prompts
+- Powered by Google's Generative AI
+- Support for PNG, JPEG, and WebP formats
+- Automatic image optimization and resizing
 
-- **Frontend**: Next.js 15, React 18, TypeScript
-- **UI Components**: Shadcn UI, Tailwind CSS
-- **AI API**: Google Gemini 2.5 Flash Image Preview
-- **File Handling**: React Dropzone
-- **Icons**: Lucide React
+### 📱 **Mobile-First Design**
+- Zero-scroll interface optimized for mobile devices
+- Sticky action bar with primary controls
+- Touch-friendly interface with 44px+ touch targets
+- Responsive design that works on all screen sizes
 
-## Prerequisites
+### 🔄 **Smart History Management**
+- Visual thumbnail history of all edits
+- One-click revert to any previous version
+- Linear editing workflow with branch management
+- Automatic local storage persistence
 
-- Node.js 18+ and npm
-- Google AI API key from [Google AI Studio](https://aistudio.google.com/apikey)
+### ⚡ **Performance Optimized**
+- Next.js 15 with Turbopack for fast builds
+- Optimized images with Next.js Image component
+- Client-side image processing with automatic compression
+- Production-ready with zero ESLint warnings
 
-## Getting Started
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18.17 or higher
+- Google AI API key (from [Google AI Studio](https://aistudio.google.com/))
+
+### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd ai-image-editor
+   git clone https://github.com/Berkay2002/image-editor.git
+   cd image-editor
    ```
 
 2. **Install dependencies**
@@ -38,13 +53,14 @@ A Next.js application that uses Google's Gemini 2.5 Flash Image Preview API (aka
    ```
 
 3. **Set up environment variables**
-   
-   Create a `.env.local` file in the root directory:
-   ```env
-   GOOGLE_GENAI_API_KEY=your_actual_api_key_here
+   ```bash
+   cp .env.local.example .env.local
    ```
    
-   Replace `your_actual_api_key_here` with your actual Google AI API key.
+   Add your Google AI API key to `.env.local`:
+   ```env
+   GOOGLE_AI_API_KEY=your_api_key_here
+   ```
 
 4. **Run the development server**
    ```bash
@@ -52,79 +68,138 @@ A Next.js application that uses Google's Gemini 2.5 Flash Image Preview API (aka
    ```
 
 5. **Open your browser**
-   
-   Navigate to [http://localhost:3000](http://localhost:3000) to see the application.
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-## Usage
+## 🛠️ Tech Stack
 
-1. **Upload an Image**: Drag and drop an image file (PNG, JPEG, or WebP, max 10MB) into the upload area
-2. **Write a Prompt**: Describe how you want to edit the image (e.g., "Make the sky more vibrant blue, add flying birds")
-3. **Generate**: Click the "Generate" button and wait for AI to process your request
-4. **Download**: Save the edited image using the download button
+- **Framework:** Next.js 15.5.3 with App Router
+- **Language:** TypeScript 5
+- **Styling:** Tailwind CSS 4
+- **AI:** Google Generative AI
+- **UI Components:** Custom Retro/Brutalist design system
+- **Icons:** Lucide React
+- **File Handling:** React Dropzone
+- **Build Tool:** Turbopack
 
-## Example Prompts
+## 📋 Available Scripts
 
-- "Change the background to a sunset scene"
-- "Add flying birds in the sky"
-- "Make the colors more vibrant and saturated"
-- "Convert to black and white with vintage film look"
-- "Add snow falling in the scene"
-- "Change the lighting to golden hour"
+```bash
+# Development
+npm run dev          # Start development server with Turbopack
 
-## File Structure
+# Production
+npm run build        # Create production build with Turbopack
+npm run start        # Start production server
+
+# Code Quality
+npm run lint         # Run ESLint
+```
+
+## 🎯 Usage
+
+### Basic Workflow
+1. **Upload an image** by dragging & dropping or clicking the upload area
+2. **Enter a prompt** describing how you want to edit the image
+3. **Generate** the edited version using AI
+4. **Review history** and revert to any previous version if needed
+5. **Download** your final edited image
+
+### Example Prompts
+- "Make the sky more vibrant blue and add flying birds"
+- "Change the lighting to golden hour sunset"
+- "Remove the background and make it transparent"
+- "Add a vintage film effect with warm tones"
+- "Convert to black and white with high contrast"
+
+## 📱 Mobile Experience
+
+The app is specifically optimized for mobile devices with:
+
+- **Compact Layout:** History thumbnails at top, main image below, prompt input at bottom
+- **Sticky Actions:** Generate and Download buttons always accessible
+- **No Scrolling:** Entire interface fits within viewport
+- **Touch Optimized:** All interactive elements meet accessibility standards
+- **Progressive Enhancement:** Works great on both mobile and desktop
+
+## 🏗️ Architecture
 
 ```
 src/
 ├── app/
-│   ├── actions/          # Server actions
-│   │   └── editImage.ts   # Gemini API integration
-│   ├── globals.css        # Global styles
-│   └── page.tsx           # Main application page
+│   ├── actions/          # Server actions for AI processing
+│   ├── globals.css       # Global styles and CSS variables
+│   ├── layout.tsx        # Root layout with fonts
+│   └── page.tsx          # Main application component
 ├── components/
-│   ├── ui/                # Shadcn UI components
-│   ├── ImageDropzone.tsx  # File upload component
-│   ├── ImagePreview.tsx   # Image display component
-│   └── PromptInput.tsx    # Text input component
-├── lib/
-│   ├── genai.ts          # Gemini client configuration
-│   ├── download.ts       # Image download utility
-│   └── utils.ts          # Shadcn utilities
-└── types/
-    └── index.ts          # TypeScript type definitions
+│   ├── retroui/          # Custom UI component library
+│   ├── ImageDropzone.tsx # File upload component
+│   ├── ImageHistory.tsx  # History management
+│   ├── ImagePreview.tsx  # Image display component
+│   ├── MobileActionBar.tsx # Mobile-specific actions
+│   └── PromptInput.tsx   # Text input for prompts
+├── lib/                  # Utility functions
+├── types/                # TypeScript type definitions
+└── ...
 ```
 
-## Available Scripts
+## 🎨 Design System
 
-```bash
-npm run dev      # Start development server
-npm run build    # Build for production
-npm run start    # Start production server
-npm run lint     # Run ESLint
+The app features a custom **Retro/Brutalist** design system with:
+- Bold typography using Archivo Black and Space Grotesk
+- High contrast colors with 2px borders
+- Drop shadows and button press animations
+- Consistent spacing scale
+- Mobile-first responsive breakpoints
+
+## 🔧 Configuration
+
+### Environment Variables
+```env
+GOOGLE_AI_API_KEY=your_google_ai_api_key
 ```
 
-## Error Handling
+### Image Processing Limits
+- Maximum file size: 10MB
+- Automatic resize for files >3MB
+- Supported formats: PNG, JPEG, WebP
+- Maximum dimensions: 1920x1920 (auto-resized)
 
-The application handles various error scenarios:
+## 🚀 Deployment
 
-- **Invalid file types**: Only PNG, JPEG, and WebP are supported
-- **File size limits**: Maximum 10MB per image
-- **API errors**: Rate limiting, quota exceeded, safety filters
-- **Network issues**: Timeout and connectivity problems
+### Vercel (Recommended)
+1. Connect your GitHub repository to Vercel
+2. Add your `GOOGLE_AI_API_KEY` environment variable
+3. Deploy automatically on push to main
 
-## Contributing
+### Other Platforms
+The app works with any Next.js-compatible hosting platform:
+- Netlify
+- AWS Amplify
+- Railway
+- DigitalOcean App Platform
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
-- [Google AI](https://ai.google.dev/) for the Gemini API
-- [Shadcn UI](https://ui.shadcn.com/) for beautiful components
-- [Vercel](https://vercel.com/) for Next.js and deployment platform
+- [Google AI](https://ai.google.dev/) for the Generative AI API
+- [Next.js](https://nextjs.org/) for the fantastic framework
+- [Tailwind CSS](https://tailwindcss.com/) for the utility-first CSS
+- [Lucide](https://lucide.dev/) for the beautiful icons
+
+---
+
+<div align="center">
+  <p>Built with ❤️ by <a href="https://github.com/Berkay2002">Berkay2002</a></p>
+  <p>⭐ Star this repository if you found it helpful!</p>
+</div>
