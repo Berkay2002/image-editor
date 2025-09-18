@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect } from 'react';
 import { ImageDropzone } from '@/components/ImageDropzone';
 import { ImagePreview } from '@/components/ImagePreview';
+import { ImageErrorBoundary } from '@/components/ImageErrorBoundary';
 import { PromptInput } from '@/components/PromptInput';
 import { ChatHistory } from '@/components/ChatHistory';
 import { MobileHistorySidebar } from '@/components/MobileHistorySidebar';
@@ -15,6 +16,7 @@ import { Bot, Upload } from 'lucide-react';
 import { editImage } from '@/app/actions/editImage';
 import { resizeImage, shouldResizeImage, batchResizeForAPI, fileToDataURL } from '@/lib/imageUtils';
 import { loadHistory, saveHistory, createHistoryItem } from '@/lib/historyUtils';
+import { blobURLManager } from '@/lib/blobURLManager';
 import { AppState } from '@/types';
 
 export default function Home() {
@@ -28,8 +30,9 @@ export default function Home() {
     currentHistoryId: null,
     skippedInitialImage: false
   });
-  
+
   const [, startTransition] = useTransition();
+  const [cachedBlobURL, setCachedBlobURL] = useState<string | null>(null);
 
   // Load history from localStorage on component mount
   useEffect(() => {
@@ -44,6 +47,28 @@ export default function Home() {
       }));
     }
   }, []);
+
+  // Manage blob URL for current image file
+  useEffect(() => {
+    // Clean up previous cached URL
+    if (cachedBlobURL) {
+      blobURLManager.releaseURL(cachedBlobURL);
+      setCachedBlobURL(null);
+    }
+
+    // Create new cached URL if we have an image file
+    if (state.imageFile) {
+      const newURL = blobURLManager.getOrCreateURL(state.imageFile);
+      setCachedBlobURL(newURL);
+    }
+
+    // Cleanup function
+    return () => {
+      if (cachedBlobURL) {
+        blobURLManager.releaseURL(cachedBlobURL);
+      }
+    };
+  }, [state.imageFile]); // Only depend on imageFile, not cachedBlobURL to avoid loops
 
   const handleImageSelect = async (file: File) => {
     try {
@@ -66,11 +91,12 @@ export default function Home() {
 
       saveHistory(newHistory);
     } catch (error) {
-      console.error('Error processing image:', error);
+      console.error('[Page] Error processing image:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process the selected image. Please try again.';
       setState(prev => ({
         ...prev,
         status: 'error',
-        errorMessage: 'Failed to process the selected image. Please try again.'
+        errorMessage
       }));
     }
   };
@@ -80,38 +106,9 @@ export default function Home() {
   };
   
   const handleAdditionalImagesChange = (images: File[]) => {
-    setState(prev => {
-      const newState = { ...prev, additionalImages: images };
-      
-      // If we don't have a main image and user adds an additional image,
-      // promote the first additional image to be the main image
-      if (!prev.imageFile && images.length > 0) {
-        const mainImage = images[0];
-        const remainingImages = images.slice(1);
-        
-        // Convert the main image to compressed base64 for history
-        fileToDataURL(mainImage, true).then((base64Data) => {
-          const originalItem = createHistoryItem(base64Data, '', true);
-          const newHistory = [originalItem];
-
-          setState(current => ({
-            ...current,
-            imageFile: mainImage,
-            additionalImages: remainingImages,
-            imageHistory: newHistory,
-            currentHistoryId: originalItem.id
-          }));
-
-          saveHistory(newHistory);
-        }).catch((error) => {
-          console.error('Error processing additional image as main:', error);
-        });
-        
-        return newState; // This will be overwritten by the reader.onload, but we return it for now
-      }
-      
-      return newState;
-    });
+    // Additional images can only be added when there's already a main image
+    // or when the initial image has been skipped
+    setState(prev => ({ ...prev, additionalImages: images }));
   };
   
   const handleSkipImage = () => {
@@ -270,16 +267,17 @@ export default function Home() {
       const currentHistoryItem = state.imageHistory.find(item => item.id === state.currentHistoryId);
       if (currentHistoryItem) {
         if (currentHistoryItem.isOriginal && state.imageFile) {
-          return URL.createObjectURL(state.imageFile);
+          // Use cached blob URL to prevent recreating it on every render
+          return cachedBlobURL;
         } else {
-          const imageData = currentHistoryItem.imageData.startsWith('data:') ? 
+          const imageData = currentHistoryItem.imageData.startsWith('data:') ?
             currentHistoryItem.imageData : `data:image/png;base64,${currentHistoryItem.imageData}`;
           return imageData;
         }
       }
     }
-    // Fallback to original if no history
-    return state.imageFile ? URL.createObjectURL(state.imageFile) : null;
+    // Fallback to cached blob URL if we have an image file
+    return cachedBlobURL;
   };
   
   const currentImageUrl = getCurrentImageUrl();
@@ -322,14 +320,20 @@ export default function Home() {
             <div className="flex-1 flex flex-col p-4 pb-0 mobile-main-panel overflow-hidden min-h-0 mobile-safe-left mobile-safe-right">
               <div className="flex-1 flex items-center justify-center min-h-0 relative">
                 {currentImageUrl ? (
-                  <ImagePreview
-                    src={currentImageUrl}
-                    alt={currentImageInfo.title}
-                    isMobile={false}
-                    className="mobile-main-image"
-                    isLoading={state.status === 'loading'}
-                    optimizeForContainer={true}
-                  />
+                  <ImageErrorBoundary
+                    onReset={() => {
+                      setState(prev => ({ ...prev, status: 'idle', errorMessage: undefined }));
+                    }}
+                  >
+                    <ImagePreview
+                      src={currentImageUrl}
+                      alt={currentImageInfo.title}
+                      isMobile={false}
+                      className="mobile-main-image"
+                      isLoading={state.status === 'loading'}
+                      optimizeForContainer={true}
+                    />
+                  </ImageErrorBoundary>
                 ) : state.status === 'loading' ? (
                   <div className="flex items-center justify-center w-full h-full text-center p-6">
                     <div className="space-y-4 max-w-sm">
@@ -376,6 +380,8 @@ export default function Home() {
                 isLoading={state.status === 'loading'}
                 additionalImages={state.additionalImages}
                 onAdditionalImagesChange={handleAdditionalImagesChange}
+                hasMainImage={!!state.imageFile}
+                skippedInitialImage={state.skippedInitialImage}
               />
               
               {/* Error Display */}
@@ -456,6 +462,8 @@ export default function Home() {
                     isLoading={state.status === 'loading'}
                     additionalImages={state.additionalImages}
                     onAdditionalImagesChange={handleAdditionalImagesChange}
+                    hasMainImage={!!state.imageFile}
+                    skippedInitialImage={state.skippedInitialImage}
                   />
                   
                   {/* Error Display */}
@@ -473,13 +481,19 @@ export default function Home() {
               <div className="flex-1 flex flex-col p-6 image-display-panel overflow-hidden min-h-0">
                 <div className="flex-1 flex items-center justify-center min-h-0 relative">
                   {currentImageUrl ? (
-                    <ImagePreview
-                      src={currentImageUrl}
-                      alt={currentImageInfo.title}
-                      className=""
-                      isLoading={state.status === 'loading'}
-                      optimizeForContainer={true}
-                    />
+                    <ImageErrorBoundary
+                      onReset={() => {
+                        setState(prev => ({ ...prev, status: 'idle', errorMessage: undefined }));
+                      }}
+                    >
+                      <ImagePreview
+                        src={currentImageUrl}
+                        alt={currentImageInfo.title}
+                        className=""
+                        isLoading={state.status === 'loading'}
+                        optimizeForContainer={true}
+                      />
+                    </ImageErrorBoundary>
                   ) : state.status === 'loading' ? (
                     <div className="flex items-center justify-center w-full h-full text-center p-8">
                       <div className="space-y-6 max-w-md">

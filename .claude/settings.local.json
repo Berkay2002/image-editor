@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run generate-icons:*)"
+      "Bash(npm run generate-icons:*)",
+      "Bash(pnpm.cmd run:*)"
     ],
     "deny": [],
     "ask": []

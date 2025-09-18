@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Skeleton } from '@/components/retroui/Skeleton';
 import { Loader } from '@/components/retroui/loader';
 import { optimizeForDisplay } from '@/lib/imageUtils';
+import { blobURLManager } from '@/lib/blobURLManager';
 
 interface ImagePreviewProps {
   src: string;
@@ -29,12 +30,18 @@ export function ImagePreview({
 }: ImagePreviewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [imageDimensions, setImageDimensions] = useState<{width: number, height: number} | null>(null);
+  const [fallbackSrc, setFallbackSrc] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState<{width: number, height: number}>({width: 0, height: 0});
   const [windowHeight, setWindowHeight] = useState(0);
   const [optimizedSrc, setOptimizedSrc] = useState<string>(src);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [managedOptimizedURL, setManagedOptimizedURL] = useState<string | null>(null);
+  const managedURLRef = useRef<string | null>(null);
+  const lastOptimizedSizeRef = useRef<{width: number, height: number} | null>(null);
+  const optimizationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update container size and window height on resize and mount
   useEffect(() => {
@@ -64,14 +71,30 @@ export function ImagePreview({
       return;
     }
 
+    // Check if container size changed significantly (threshold: 10px)
+    const lastSize = lastOptimizedSizeRef.current;
+    if (lastSize) {
+      const widthDiff = Math.abs(containerSize.width - lastSize.width);
+      const heightDiff = Math.abs(containerSize.height - lastSize.height);
+      if (widthDiff < 10 && heightDiff < 10) {
+        // Size change is too small, skip optimization
+        return;
+      }
+    }
+
     // Only optimize if the image is a blob URL or data URL (user uploaded image)
     if (src.startsWith('blob:') || src.startsWith('data:')) {
       const optimizeImage = async () => {
         try {
           setIsOptimizing(true);
+          lastOptimizedSizeRef.current = { width: containerSize.width, height: containerSize.height };
 
           // Convert src to File object
           const response = await fetch(src);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch blob: ${response.status}`);
+          }
+
           const blob = await response.blob();
           const file = new File([blob], 'image.jpg', { type: blob.type || 'image/jpeg' });
 
@@ -83,55 +106,127 @@ export function ImagePreview({
             0.9
           );
 
-          // Create new blob URL for optimized image
-          const optimizedUrl = URL.createObjectURL(optimized);
-          setOptimizedSrc(optimizedUrl);
+          // Use managed blob URL creation
+          const optimizedUrl = blobURLManager.getOrCreateURL(optimized);
 
-          // Clean up old blob URL if it's different
-          if (src.startsWith('blob:') && src !== optimizedUrl) {
-            URL.revokeObjectURL(src);
+          // Clean up previous managed URL
+          if (managedOptimizedURL) {
+            blobURLManager.releaseURL(managedOptimizedURL);
           }
+
+          setOptimizedSrc(optimizedUrl);
+          setManagedOptimizedURL(optimizedUrl);
+          managedURLRef.current = optimizedUrl;
+
         } catch (error) {
-          console.warn('Failed to optimize image for display:', error);
+          console.warn('[ImagePreview] Failed to optimize image for display:', error);
           // Fall back to original src
           setOptimizedSrc(src);
+          setManagedOptimizedURL(null);
+          managedURLRef.current = null;
         } finally {
           setIsOptimizing(false);
         }
       };
 
+      // Clear any existing timeout
+      if (optimizationTimeoutRef.current) {
+        clearTimeout(optimizationTimeoutRef.current);
+      }
+
       // Debounce optimization to avoid excessive calls
-      const timeoutId = setTimeout(optimizeImage, 300);
-      return () => clearTimeout(timeoutId);
+      optimizationTimeoutRef.current = setTimeout(optimizeImage, 500);
     } else {
       // For non-blob URLs, use original src
       setOptimizedSrc(src);
+      setManagedOptimizedURL(null);
+      managedURLRef.current = null;
+      lastOptimizedSizeRef.current = null;
     }
-  }, [src, containerSize.width, containerSize.height, optimizeForContainer, isOptimizing]);
+  }, [src, containerSize.width, containerSize.height, optimizeForContainer]);
 
-  // Reset optimized src when src changes
+  // Reset states when src changes
   useEffect(() => {
+    // Clear optimization timeout
+    if (optimizationTimeoutRef.current) {
+      clearTimeout(optimizationTimeoutRef.current);
+      optimizationTimeoutRef.current = null;
+    }
+
+    // Clean up managed URL when src changes
+    if (managedOptimizedURL) {
+      blobURLManager.releaseURL(managedOptimizedURL);
+      setManagedOptimizedURL(null);
+      managedURLRef.current = null;
+    }
+
     setOptimizedSrc(src);
     setIsOptimizing(false);
+    setHasError(false);
+    setRetryCount(0);
+    setFallbackSrc(null);
+    setIsLoading(true);
+    lastOptimizedSizeRef.current = null;
   }, [src]);
 
-  // Cleanup blob URLs on unmount
+  // Cleanup managed blob URLs on unmount only
   useEffect(() => {
     return () => {
-      if (optimizedSrc.startsWith('blob:') && optimizedSrc !== src) {
-        URL.revokeObjectURL(optimizedSrc);
+      // Clear optimization timeout
+      if (optimizationTimeoutRef.current) {
+        clearTimeout(optimizationTimeoutRef.current);
+      }
+
+      // Use ref value to get the current URL at cleanup time
+      if (managedURLRef.current) {
+        blobURLManager.releaseURL(managedURLRef.current);
+        managedURLRef.current = null;
       }
     };
-  }, [optimizedSrc, src]);
+  }, []); // Empty dependency array - only run on unmount
 
   const handleLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
     const img = event.target as HTMLImageElement;
     setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
     setIsLoading(false);
     setHasError(false);
+
+    // Reduced logging for better console clarity
   };
 
-  const handleError = () => {
+  const handleError = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = event.target as HTMLImageElement;
+    console.error(`[ImagePreview] Failed to load image: ${img.src.substring(0, 50)}...`);
+
+    // Try fallback strategies before giving up
+    if (retryCount < 2) {
+      console.log(`[ImagePreview] Attempting fallback strategy ${retryCount + 1}`);
+      setRetryCount(prev => prev + 1);
+
+      // Strategy 1: Try original src if we're using optimized
+      if (retryCount === 0 && img.src !== src && !src.startsWith('data:')) {
+        console.log('[ImagePreview] Fallback: Using original src instead of optimized');
+        setFallbackSrc(src);
+        return;
+      }
+
+      // Strategy 2: For blob URLs, check if they're managed and try to recreate
+      if (retryCount === 1 && src.startsWith('blob:')) {
+        console.log('[ImagePreview] Fallback: Checking blob URL status');
+        if (!blobURLManager.isManaged(src)) {
+          console.warn('[ImagePreview] Blob URL is not managed - may have been revoked prematurely');
+        }
+
+        // Try again with a small delay
+        setTimeout(() => {
+          setFallbackSrc(src + '?retry=' + Date.now());
+        }, 100);
+        return;
+      }
+    }
+
+    // All fallback strategies failed
+    console.error(`[ImagePreview] All fallback strategies failed for: ${img.src.substring(0, 50)}...`);
     setIsLoading(false);
     setHasError(true);
   };
@@ -219,7 +314,7 @@ export function ImagePreview({
       )}
       
       <Image
-        src={optimizedSrc}
+        src={fallbackSrc || optimizedSrc}
         alt={alt}
         width={imageDimensions?.width || width}
         height={imageDimensions?.height || height}
@@ -231,6 +326,7 @@ export function ImagePreview({
         onError={handleError}
         priority
         unoptimized
+        key={`${fallbackSrc || optimizedSrc}-${retryCount}`} // Force re-render on fallback
       />
       
       {/* External Loading Overlay - Only covers the image */}

@@ -14,6 +14,8 @@ interface PromptInputProps {
   disabled?: boolean;
   additionalImages?: File[];
   onAdditionalImagesChange?: (images: File[]) => void;
+  hasMainImage?: boolean;
+  skippedInitialImage?: boolean;
 }
 
 const MAX_PROMPT_LENGTH = 1000;
@@ -25,7 +27,9 @@ export function PromptInput({
   isLoading = false,
   disabled = false,
   additionalImages = [],
-  onAdditionalImagesChange
+  onAdditionalImagesChange,
+  hasMainImage = false,
+  skippedInitialImage = false
 }: PromptInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -101,11 +105,21 @@ export function PromptInput({
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
+
+    // Only allow additional images if there's a main image or the initial image was skipped
+    if (!hasMainImage && !skippedInitialImage) {
+      console.warn('[PromptInput] Cannot add additional images without a main image.');
+      if (e.target) {
+        e.target.value = '';
+      }
+      return;
+    }
+
     if (files && files.length > 0 && onAdditionalImagesChange) {
       // Validate file types
       const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
       const validFiles = Array.from(files).filter(file => validTypes.includes(file.type));
-      
+
       if (validFiles.length > 0) {
         const newImages = [...additionalImages, ...validFiles].slice(0, 3); // Max 3 additional images
         onAdditionalImagesChange(newImages);
@@ -125,6 +139,11 @@ export function PromptInput({
   };
 
   const openImageUpload = () => {
+    // Only allow additional images if there's a main image or the initial image was skipped
+    if (!hasMainImage && !skippedInitialImage) {
+      console.warn('[PromptInput] Cannot add additional images without a main image. Please upload an image first.');
+      return;
+    }
     fileInputRef.current?.click();
   };
 
@@ -196,10 +215,11 @@ export function PromptInput({
         {/* Plus Icon Button */}
         <Button
           onClick={openImageUpload}
-          disabled={isLoading || disabled || additionalImages.length >= 3}
+          disabled={isLoading || disabled || additionalImages.length >= 3 || (!hasMainImage && !skippedInitialImage)}
           variant="outline"
           className="h-[80px] w-12 flex items-center justify-center p-0 flex-shrink-0"
           size="sm"
+          title={(!hasMainImage && !skippedInitialImage) ? "Upload a main image first to add additional images" : additionalImages.length >= 3 ? "Maximum 3 additional images allowed" : "Add additional images"}
         >
           <Plus className="h-5 w-5" />
         </Button>
