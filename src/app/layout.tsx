@@ -20,7 +20,13 @@ const space = Space_Grotesk({
 export const metadata: Metadata = {
   title: "AI Image Editor",
   description: "Transform your images with AI-powered editing. Upload, describe changes, and generate enhanced versions instantly.",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=5",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
+    viewportFit: "cover"
+  },
 };
 
 export default function RootLayout({

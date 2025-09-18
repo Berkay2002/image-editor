@@ -221,7 +221,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Layout */}
-      <div className="md:hidden h-screen flex flex-col">
+      <div className="md:hidden h-dvh flex flex-col mobile-safe-top mobile-safe-bottom">
         {!state.imageFile ? (
           <div className="h-full flex items-center justify-center p-4">
             <ImageDropzone 
@@ -232,7 +232,7 @@ export default function Home() {
         ) : (
           <div className="h-full flex flex-col">
             {/* Main Panel - Similar to desktop right panel */}
-            <div className="flex-1 flex flex-col p-4 pb-0 mobile-main-panel overflow-hidden min-h-0">
+            <div className="flex-1 flex flex-col p-4 pb-0 mobile-main-panel overflow-hidden min-h-0 mobile-safe-left mobile-safe-right">
               <div className="flex-1 flex items-center justify-center min-h-0 relative">
                 <ImagePreview 
                   src={currentImageUrl!} 
@@ -268,7 +268,7 @@ export default function Home() {
             </div>
             
             {/* Prompt Input Area - Below main panel */}
-            <div className="flex-shrink-0 border-t border-border bg-background p-4">
+            <div className="flex-shrink-0 border-t border-border bg-background p-4 mobile-safe-left mobile-safe-right">
               <PromptInput
                 prompt={state.prompt}
                 onPromptChange={handlePromptChange}

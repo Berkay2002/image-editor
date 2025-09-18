@@ -33,7 +33,7 @@ export function MobileHistorySidebar({
         variant="outline"
         size="sm"
         onClick={openSidebar}
-        className="fixed top-4 left-4 z-40 md:hidden w-10 h-10 p-0 bg-background/80 backdrop-blur-sm border-border flex items-center justify-center"
+        className="fixed z-40 md:hidden w-10 h-10 p-0 bg-background/80 backdrop-blur-sm border-border flex items-center justify-center mobile-hamburger-position"
       >
         <Menu className="h-4 w-4" />
       </Button>
