@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Textarea } from '@/components/retroui/Textarea';
 import { Button } from '@/components/retroui/Button';
-import { Separator } from '@/components/retroui/Separator';
 import { Loader2, Sparkles } from 'lucide-react';
 
 interface PromptInputProps {

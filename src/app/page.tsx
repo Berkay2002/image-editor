@@ -4,16 +4,13 @@ import { useState, useTransition, useEffect } from 'react';
 import { ImageDropzone } from '@/components/ImageDropzone';
 import { ImagePreview } from '@/components/ImagePreview';
 import { PromptInput } from '@/components/PromptInput';
-import { ImageHistory } from '@/components/ImageHistory';
 import { ChatHistory } from '@/components/ChatHistory';
 import { MobileHistorySidebar } from '@/components/MobileHistorySidebar';
 import { ResizablePanels } from '@/components/ResizablePanels';
 import { Alert } from '@/components/retroui/Alert';
-import { Separator } from '@/components/retroui/Separator';
 import { Loader } from '@/components/retroui/loader';
 import { Bot } from 'lucide-react';
 import { editImage } from '@/app/actions/editImage';
-import { downloadBase64Image } from '@/lib/download';
 import { resizeImage, shouldResizeImage } from '@/lib/imageUtils';
 import { loadHistory, saveHistory, createHistoryItem } from '@/lib/historyUtils';
 import { AppState } from '@/types';
@@ -180,26 +177,6 @@ export default function Home() {
   };
 
 
-  const handleDownload = () => {
-    // Get the current history item to download
-    if (state.currentHistoryId && state.imageHistory.length > 0) {
-      const currentHistoryItem = state.imageHistory.find(item => item.id === state.currentHistoryId);
-      if (currentHistoryItem && !currentHistoryItem.isOriginal) {
-        // Download the current generated image
-        const imageData = currentHistoryItem.imageData.startsWith('data:') ? 
-          currentHistoryItem.imageData.replace(/^data:image\/[a-z]+;base64,/, '') : 
-          currentHistoryItem.imageData;
-        const success = downloadBase64Image(imageData);
-        if (!success) {
-          setState(prev => ({
-            ...prev,
-            status: 'error',
-            errorMessage: 'Failed to download image. Please try again.'
-          }));
-        }
-      }
-    }
-  };
 
   // Determine the current image to display based on history
   const getCurrentImageUrl = () => {
@@ -240,8 +217,6 @@ export default function Home() {
   
   const currentImageInfo = getCurrentImageInfo();
 
-  // Check if we can generate (for mobile action bar)
-  const canGenerate = Boolean(state.imageFile && state.prompt.trim().length > 0 && state.status !== 'loading');
 
   return (
     <div className="min-h-screen bg-background">
@@ -250,7 +225,7 @@ export default function Home() {
 
 
         {/* Main Content - Mobile */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col pb-24">
           {!state.imageFile ? (
             <ImageDropzone 
               onImageSelect={handleImageSelect}
@@ -258,13 +233,13 @@ export default function Home() {
             />
           ) : (
             <>
-              {/* Mobile Layout: History at top, Image below, Prompt at bottom */}
-              <div className="flex flex-col space-y-4">
+              {/* Mobile Layout: Main content area with bottom padding for fixed prompt */}
+              <div className="flex-1 flex flex-col space-y-4 overflow-y-auto">
                 {/* Image History - Hidden on mobile, now accessible via sidebar */}
                 
-                {/* Main Image Section - Right below history */}
+                {/* Main Image Section */}
                 <div className="flex flex-col space-y-3">
-                  {/* Current Image - Constrained height on mobile */}
+                  {/* Current Image - Optimized height for mobile */}
                   <div className="flex flex-col">
                     <div className="relative w-full max-w-none mx-auto">
                       <ImagePreview src={currentImageUrl!} alt={currentImageInfo.title} isMobile={true} />
@@ -294,37 +269,39 @@ export default function Home() {
                     )}
                   </div>
                 </div>
-
-                {/* Bottom Section: Prompt Input - positioned close to fixed button */}
-                <div className="flex-shrink-0">
-                  <PromptInput
-                    prompt={state.prompt}
-                    onPromptChange={handlePromptChange}
-                    onGenerate={handleGenerate}
-                    isLoading={state.status === 'loading'}
-                  />
-                  
-                  {/* Error Display */}
-                  {state.status === 'error' && state.errorMessage && (
-                    <div className="mt-2">
-                      <Alert status="error">
-                        <Alert.Description>{state.errorMessage}</Alert.Description>
-                      </Alert>
-                    </div>
-                  )}
-                </div>
+              </div>
+              
+              {/* Fixed Prompt Input at Bottom - Mobile Only */}
+              <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 md:hidden z-40">
+                <PromptInput
+                  prompt={state.prompt}
+                  onPromptChange={handlePromptChange}
+                  onGenerate={handleGenerate}
+                  isLoading={state.status === 'loading'}
+                />
+                
+                {/* Error Display */}
+                {state.status === 'error' && state.errorMessage && (
+                  <div className="mt-2">
+                    <Alert status="error">
+                      <Alert.Description>{state.errorMessage}</Alert.Description>
+                    </Alert>
+                  </div>
+                )}
               </div>
             </>
           )}
         </div>
-        
-        {/* Mobile History Sidebar */}
+      </div>
+      
+      {/* Mobile History Sidebar - Only show when image is uploaded */}
+      {state.imageFile && (
         <MobileHistorySidebar
           history={state.imageHistory}
           currentId={state.currentHistoryId}
           onRevert={handleRevert}
         />
-      </div>
+      )}
       
       {/* Desktop Layout: Resizable Two-Panel */}
       <div className="hidden md:block">

@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/retroui/Button';
-import { ImageHistory } from '@/components/ImageHistory';
 import { Menu, X } from 'lucide-react';
 import { HistoryItem } from '@/types';
 
@@ -22,8 +21,8 @@ export function MobileHistorySidebar({
   const openSidebar = () => setIsOpen(true);
   const closeSidebar = () => setIsOpen(false);
 
-  // Don't render if there's no history
-  if (history.length <= 1) {
+  // Don't render if there's no image uploaded yet
+  if (history.length === 0) {
     return null;
   }
 
@@ -72,7 +71,7 @@ export function MobileHistorySidebar({
 
         {/* Sidebar Content */}
         <div className="p-4 overflow-y-auto h-[calc(100%-4rem)]">
-          {history.length > 0 ? (
+          {history.length > 1 ? (
             <div className="space-y-4">
               <p className="font-sans text-sm text-muted-foreground">
                 Tap any image to return to that version
@@ -99,6 +98,7 @@ export function MobileHistorySidebar({
                       <div className="flex items-start gap-3">
                         {/* Thumbnail */}
                         <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={item.imageData.startsWith('data:') ? item.imageData : `data:image/png;base64,${item.imageData}`}
                             alt={item.prompt || 'History image'}
@@ -131,10 +131,18 @@ export function MobileHistorySidebar({
               </div>
             </div>
           ) : (
-            <div className="text-center py-8">
-              <p className="font-sans text-sm text-muted-foreground">
-                No history available
-              </p>
+            <div className="text-center py-8 space-y-4">
+              <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto">
+                <Menu className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div className="space-y-2">
+                <p className="font-head text-base font-bold text-foreground">
+                  Start editing!
+                </p>
+                <p className="font-sans text-sm text-muted-foreground leading-relaxed">
+                  Use the prompt input below to describe how you want to edit your image. Your history will appear here.
+                </p>
+              </div>
             </div>
           )}
         </div>

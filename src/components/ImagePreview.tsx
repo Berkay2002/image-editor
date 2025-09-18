@@ -75,9 +75,9 @@ export function ImagePreview({
       const isPortrait = imageAspectRatio < 1;
       
       if (isPortrait) {
-        // Portrait images: account for mobile browser UI (address bar, bottom bar)
-        // Use 35% of viewport height to account for ~75% usable height due to browser UI
-        const maxMobileHeight = windowHeight > 0 ? windowHeight * 0.35 : 250;
+        // Portrait images: increased to 50% of viewport height for better visibility
+        // Mobile browsers provide more usable space than initially estimated
+        const maxMobileHeight = windowHeight > 0 ? windowHeight * 0.5 : 350;
         return {
           width: 'auto',
           height: 'auto',
