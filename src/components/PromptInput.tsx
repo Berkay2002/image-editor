@@ -4,13 +4,12 @@ import { useState } from 'react';
 import { Textarea } from '@/components/retroui/Textarea';
 import { Button } from '@/components/retroui/Button';
 import { Separator } from '@/components/retroui/Separator';
-import { Loader2, Sparkles, RotateCcw } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 
 interface PromptInputProps {
   prompt: string;
   onPromptChange: (prompt: string) => void;
   onGenerate: () => void;
-  onClear: () => void;
   isLoading?: boolean;
   disabled?: boolean;
 }
@@ -21,7 +20,6 @@ export function PromptInput({
   prompt,
   onPromptChange,
   onGenerate,
-  onClear,
   isLoading = false,
   disabled = false
 }: PromptInputProps) {
@@ -42,23 +40,23 @@ export function PromptInput({
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-4">
-      <div className="space-y-4">
-        <label htmlFor="prompt" className="font-head text-lg font-black text-foreground block">
+    <div className="w-full max-w-none md:max-w-2xl mx-auto space-y-4">
+      <div className="space-y-3 md:space-y-4">
+        <label htmlFor="prompt" className="font-head text-base md:text-lg font-black text-foreground block">
           Describe how you want to edit your image
         </label>
         
         <div className="relative">
           <Textarea
             id="prompt"
-            placeholder="e.g., Make the sky more vibrant blue, add flying birds, change to sunset lighting...&#10;&#10;💡 Press Enter to generate • Shift+Enter for new line"
+            placeholder="Tap Enter to generate • Shift+Enter for new line"
             value={prompt}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onPromptChange(e.target.value)}
             onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             disabled={isLoading || disabled}
-            className={`min-h-[100px] resize-none transition-all ${
+            className={`min-h-[100px] md:min-h-[100px] resize-none transition-all ${
               isFocused ? 'ring-2 ring-blue-500' : ''
             } ${isOverLimit ? 'border-red-500 focus:border-red-500' : ''}`}
           />
@@ -70,7 +68,6 @@ export function PromptInput({
                 ? 'text-primary' 
                 : 'text-muted-foreground'
           }`}>
-            {characterCount}/{MAX_PROMPT_LENGTH}
           </div>
         </div>
         
@@ -81,13 +78,13 @@ export function PromptInput({
         )}
       </div>
 
-      <Separator />
+      <Separator className="hidden md:block" />
 
-      <div className="flex gap-3 justify-end">
+      <div className="hidden md:flex flex-col sm:flex-row gap-3 sm:justify-end">
         <Button
           onClick={onGenerate}
           disabled={!canGenerate}
-          className="flex items-center gap-2 min-w-[120px] font-sans font-bold"
+          className="flex items-center justify-center gap-2 min-w-[120px] h-12 font-sans font-bold w-full sm:w-auto"
         >
           {isLoading ? (
             <>

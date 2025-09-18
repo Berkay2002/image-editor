@@ -5,16 +5,15 @@ import { ImageDropzone } from '@/components/ImageDropzone';
 import { ImagePreview } from '@/components/ImagePreview';
 import { PromptInput } from '@/components/PromptInput';
 import { ImageHistory } from '@/components/ImageHistory';
-import { Button } from '@/components/retroui/Button';
+import { MobileActionBar } from '@/components/MobileActionBar';
 import { Alert } from '@/components/retroui/Alert';
 import { Separator } from '@/components/retroui/Separator';
 import { Loader } from '@/components/retroui/loader';
 import { editImage } from '@/app/actions/editImage';
 import { downloadBase64Image } from '@/lib/download';
 import { resizeImage, shouldResizeImage } from '@/lib/imageUtils';
-import { loadHistory, saveHistory, clearHistory, createHistoryItem } from '@/lib/historyUtils';
+import { loadHistory, saveHistory, createHistoryItem } from '@/lib/historyUtils';
 import { AppState } from '@/types';
-import { Download } from 'lucide-react';
 
 export default function Home() {
   const [state, setState] = useState<AppState>({
@@ -25,8 +24,6 @@ export default function Home() {
     imageHistory: [],
     currentHistoryId: null
   });
-  
-  const [previewId, setPreviewId] = useState<string | null>(null);
   
   const [, startTransition] = useTransition();
 
@@ -154,17 +151,6 @@ export default function Home() {
     });
   };
 
-  const handleClear = () => {
-    setState({
-      imageFile: null,
-      prompt: '',
-      outputImage: null,
-      status: 'idle',
-      imageHistory: [],
-      currentHistoryId: null
-    });
-    clearHistory();
-  };
 
   const handleRevert = (historyId: string) => {
     const historyItem = state.imageHistory.find(item => item.id === historyId);
@@ -190,15 +176,6 @@ export default function Home() {
     saveHistory(newHistory);
   };
 
-  const handleClearHistory = () => {
-    setState(prev => ({
-      ...prev,
-      imageHistory: [],
-      currentHistoryId: null,
-      outputImage: null
-    }));
-    clearHistory();
-  };
 
   const handleDownload = () => {
     // Get the current history item to download
@@ -260,84 +237,175 @@ export default function Home() {
   
   const currentImageInfo = getCurrentImageInfo();
 
+  // Check if we can generate (for mobile action bar)
+  const canGenerate = Boolean(state.imageFile && state.prompt.trim().length > 0 && state.status !== 'loading');
+  const hasOutputImage = Boolean(state.outputImage);
+
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="h-screen bg-background overflow-hidden">
+      <div className="h-full flex flex-col px-4 py-4 md:py-8 max-w-none mx-auto md:max-w-4xl">
+
+        {/* Header - Hidden on mobile, visible on desktop */}
+        <header className="hidden md:block text-center mb-6 md:mb-8 flex-shrink-0">
+          <h1 className="font-head text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-2">
+            AI Image Editor
+          </h1>
+          <p className="font-sans text-sm md:text-base text-muted-foreground">
+            Transform your images with AI-powered editing
+          </p>
+        </header>
 
         {/* Main Content */}
-        <div className="space-y-8">
+        <div className="flex-1 flex flex-col min-h-0">
           {!state.imageFile ? (
             <ImageDropzone 
               onImageSelect={handleImageSelect}
               error={state.status === 'error' ? state.errorMessage : undefined}
             />
           ) : (
-            <div className="space-y-8">
-              {/* Current Image */}
-              <div className="space-y-4">
-                <div className="relative w-full max-w-2xl mx-auto">
-                  <ImagePreview src={currentImageUrl!} alt={currentImageInfo.title} />
-                  {state.status === 'loading' && (
-                    <div className="absolute top-0 left-0 right-0 bottom-0 bg-black/50 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                      <div className="text-center space-y-4">
-                        <Loader variant="default" size="lg" count={5} duration={0.8} delayStep={150} className="justify-center" />
-                        <div className="space-y-2">
-                          <p className="font-head text-xl font-black text-white">
-                            AI is generating your image...
-                          </p>
-                          <p className="font-sans text-sm text-white/80">
-                            This may take a few moments
-                          </p>
+            <>
+              {/* Mobile Layout: History at top, Image below, Prompt at bottom */}
+              <div className="md:hidden flex flex-col h-full pb-16">
+                {/* Image History - Compact at very top */}
+                {state.imageHistory.length > 0 && (
+                  <div className="flex-shrink-0 mb-3">
+                    <ImageHistory 
+                      history={state.imageHistory}
+                      currentId={state.currentHistoryId}
+                      onRevert={handleRevert}
+                    />
+                  </div>
+                )}
+                
+                {/* Main Image Section - Right below history */}
+                <div className="flex-1 flex flex-col space-y-3 min-h-0">
+                  {/* Current Image - Positioned right below history */}
+                  <div className="flex-1 flex flex-col justify-start min-h-0">
+                    <div className="relative w-full max-w-none mx-auto flex-shrink-0">
+                      <ImagePreview src={currentImageUrl!} alt={currentImageInfo.title} />
+                      {state.status === 'loading' && (
+                        <div className="absolute top-0 left-0 right-0 bottom-0 bg-black/50 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                          <div className="text-center space-y-3">
+                            <Loader variant="default" size="lg" count={5} duration={0.8} delayStep={150} className="justify-center" />
+                            <div className="space-y-3">
+                              <p className="font-head text-lg font-black text-white">
+                                AI is generating your image...
+                              </p>
+                              <p className="font-sans text-sm text-white/80">
+                                This may take a few moments
+                              </p>
+                            </div>
+                          </div>
                         </div>
+                      )}
+                    </div>
+                    
+                    {!currentImageInfo.title.includes('Original') && currentImageInfo.prompt !== 'No prompt' && (
+                      <div className="bg-muted/50 rounded-lg p-2 mt-2 flex-shrink-0">
+                        <p className="font-sans text-xs text-muted-foreground">
+                          <strong>Prompt:</strong> {currentImageInfo.prompt}
+                        </p>
                       </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bottom Section: Prompt Input - positioned close to fixed button */}
+                <div className="flex-shrink-0 pt-2">
+                  <PromptInput
+                    prompt={state.prompt}
+                    onPromptChange={handlePromptChange}
+                    onGenerate={handleGenerate}
+                    isLoading={state.status === 'loading'}
+                  />
+                  
+                  {/* Error Display */}
+                  {state.status === 'error' && state.errorMessage && (
+                    <div className="mt-2">
+                      <Alert status="error">
+                        <Alert.Description>{state.errorMessage}</Alert.Description>
+                      </Alert>
                     </div>
                   )}
                 </div>
-                
-                {!currentImageInfo.title.includes('Original') && currentImageInfo.prompt !== 'No prompt' && (
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <p className="font-sans text-sm text-muted-foreground">
-                      <strong>Prompt:</strong> {currentImageInfo.prompt}
-                    </p>
-                  </div>
-                )}
               </div>
 
-              <Separator />
+              {/* Desktop Layout: Original order */}
+              <div className="hidden md:flex md:flex-col md:h-full md:space-y-6">
+                {/* Current Image */}
+                <div className="space-y-4">
+                  <div className="relative w-full max-w-2xl mx-auto">
+                    <ImagePreview src={currentImageUrl!} alt={currentImageInfo.title} />
+                    {state.status === 'loading' && (
+                      <div className="absolute top-0 left-0 right-0 bottom-0 bg-black/50 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                        <div className="text-center space-y-4">
+                          <Loader variant="default" size="lg" count={5} duration={0.8} delayStep={150} className="justify-center" />
+                          <div className="space-y-4">
+                            <p className="font-head text-xl font-black text-white">
+                              AI is generating your image...
+                            </p>
+                            <p className="font-sans text-sm text-white/80">
+                              This may take a few moments
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {!currentImageInfo.title.includes('Original') && currentImageInfo.prompt !== 'No prompt' && (
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <p className="font-sans text-base text-muted-foreground">
+                        <strong>Prompt:</strong> {currentImageInfo.prompt}
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-              {/* Prompt Input */}
-              <PromptInput
-                prompt={state.prompt}
-                onPromptChange={handlePromptChange}
-                onGenerate={handleGenerate}
-                onClear={handleClear}
-                isLoading={state.status === 'loading'}
-              />
+                <Separator />
 
-              {/* Image History */}
-              {state.imageHistory.length > 0 && (
-                <>
-                  <Separator />
-                  <ImageHistory 
-                    history={state.imageHistory}
-                    currentId={state.currentHistoryId}
-                    onRevert={handleRevert}
-                    onClearHistory={handleClearHistory}
-                  />
-                </>
-              )}
+                {/* Prompt Input */}
+                <PromptInput
+                  prompt={state.prompt}
+                  onPromptChange={handlePromptChange}
+                  onGenerate={handleGenerate}
+                  isLoading={state.status === 'loading'}
+                />
 
-              {/* Error Display */}
-              {state.status === 'error' && state.errorMessage && (
-                <Alert status="error">
-                  <Alert.Description>{state.errorMessage}</Alert.Description>
-                </Alert>
-              )}
-            </div>
+                {/* Image History */}
+                {state.imageHistory.length > 0 && (
+                  <>
+                    <Separator />
+                    <ImageHistory 
+                      history={state.imageHistory}
+                      currentId={state.currentHistoryId}
+                      onRevert={handleRevert}
+                    />
+                  </>
+                )}
+
+                {/* Error Display */}
+                {state.status === 'error' && state.errorMessage && (
+                  <Alert status="error">
+                    <Alert.Description>{state.errorMessage}</Alert.Description>
+                  </Alert>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
-
+      
+      {/* Mobile Action Bar */}
+      {state.imageFile && (
+        <MobileActionBar
+          canGenerate={canGenerate}
+          isLoading={state.status === 'loading'}
+          hasOutputImage={hasOutputImage}
+          onGenerate={handleGenerate}
+          onDownload={handleDownload}
+        />
+      )}
     </div>
   );
 }

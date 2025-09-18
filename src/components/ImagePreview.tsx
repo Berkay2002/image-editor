@@ -34,19 +34,19 @@ export function ImagePreview({
 
   if (hasError) {
     return (
-      <div className={`relative w-full max-w-2xl mx-auto bg-muted rounded-lg flex items-center justify-center ${className}`}>
-        <div className="text-center p-8">
-          <p className="font-sans text-muted-foreground mb-2 font-medium">Failed to load image</p>
-          <p className="font-sans text-sm text-muted-foreground">Please try uploading a different image</p>
+      <div className={`relative w-full max-w-none md:max-w-2xl mx-auto bg-muted rounded-lg flex items-center justify-center min-h-[200px] ${className}`}>
+        <div className="text-center p-6 md:p-8">
+          <p className="font-sans text-sm md:text-base text-muted-foreground mb-2 font-medium">Failed to load image</p>
+          <p className="font-sans text-xs md:text-sm text-muted-foreground">Please try uploading a different image</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`relative w-full max-w-2xl mx-auto ${className}`}>
+    <div className={`relative w-full max-w-none md:max-w-2xl mx-auto ${className}`}>
       {isLoading && (
-        <Skeleton className="w-full aspect-[4/3] rounded-lg" />
+        <Skeleton className="w-full aspect-[4/3] md:aspect-[4/3] rounded-lg" />
       )}
       
       <Image
@@ -54,7 +54,7 @@ export function ImagePreview({
         alt={alt}
         width={width}
         height={height}
-        className={`w-full h-auto rounded-lg shadow-lg transition-opacity ${
+        className={`w-full h-auto rounded-lg shadow-lg transition-opacity object-contain ${
           isLoading ? 'opacity-0' : 'opacity-100'
         }`}
         onLoad={handleLoad}

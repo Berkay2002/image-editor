@@ -42,11 +42,11 @@ export function ImageDropzone({ onImageSelect, error }: ImageDropzoneProps) {
     : null;
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-none md:max-w-2xl mx-auto">
       <div
         {...getRootProps()}
         className={`
-          border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-all duration-200
+          border-2 border-dashed rounded-lg p-6 md:p-12 text-center cursor-pointer transition-all duration-200 min-h-[200px] md:min-h-auto flex flex-col justify-center
           ${isDragActive 
             ? 'border-primary bg-primary/10' 
             : 'border-border hover:border-primary'
@@ -54,22 +54,22 @@ export function ImageDropzone({ onImageSelect, error }: ImageDropzoneProps) {
         `}
       >
         <input {...getInputProps()} />
-        <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-6" />
+        <Upload className="mx-auto h-10 w-10 md:h-12 md:w-12 text-muted-foreground mb-4 md:mb-6" />
         
         {isDragActive ? (
-          <p className="font-head text-xl font-black text-primary">
+          <p className="font-head text-lg md:text-xl font-black text-primary">
             Drop your image here...
           </p>
         ) : (
-          <div>
-            <p className="font-head text-xl font-black text-card-foreground mb-3">
+          <div className="space-y-3 md:space-y-4">
+            <p className="font-head text-lg md:text-xl font-black text-card-foreground">
               Drag & drop an image here
             </p>
-            <p className="font-sans text-base text-muted-foreground mb-6">
-              or click to select from your computer
+            <p className="font-sans text-sm md:text-base text-muted-foreground">
+              or tap to select from your device
             </p>
-            <p className="font-sans text-sm text-muted-foreground">
-              Supports PNG, JPEG, WebP • Max 10MB
+            <p className="font-sans text-xs md:text-sm text-muted-foreground">
+              Supports PNG, JPEG, WebP <span className="hidden sm:inline">• Max 10MB</span>
             </p>
           </div>
         )}

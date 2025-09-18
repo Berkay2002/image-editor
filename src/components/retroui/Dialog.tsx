@@ -118,7 +118,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, IDialogContentProps>(
 );
 DialogContent.displayName = "DialogContent";
 
-interface IDialogDescriptionProps extends HTMLAttributes<HTMLDivElement> {}
+type IDialogDescriptionProps = HTMLAttributes<HTMLDivElement>;
 const DialogDescription = ({
   children,
   className,
