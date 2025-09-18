@@ -26,6 +26,8 @@ export default function Home() {
     currentHistoryId: null
   });
   
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  
   const [, startTransition] = useTransition();
 
   // Load history from localStorage on component mount
@@ -120,26 +122,9 @@ export default function Home() {
           // Create new history item for the generated image
           const newHistoryItem = createHistoryItem(`data:image/png;base64,${result.data}`, state.prompt);
           
-          // Get current history up to the current position
-          const currentIndex = state.currentHistoryId ? 
-            state.imageHistory.findIndex(item => item.id === state.currentHistoryId) : -1;
-          
-          let updatedHistory;
-          
-          // Check if we're editing from a non-original image (AI-generated)
-          const currentHistoryItem = currentIndex >= 0 ? state.imageHistory[currentIndex] : null;
-          const isEditingFromAIGenerated = currentHistoryItem && !currentHistoryItem.isOriginal;
-          
-          if (isEditingFromAIGenerated) {
-            // Replace the current AI-generated image instead of adding a new one
-            updatedHistory = [...state.imageHistory];
-            updatedHistory[currentIndex] = newHistoryItem;
-          } else {
-            // Normal behavior: append new item (when editing from original or first generation)
-            const historyUpToCurrent = currentIndex >= 0 ? 
-              state.imageHistory.slice(0, currentIndex + 1) : state.imageHistory;
-            updatedHistory = [...historyUpToCurrent, newHistoryItem];
-          }
+          // Always append new generated images to history
+          // This creates a linear history: Original → Gen1 → Gen2 → Gen3...
+          const updatedHistory = [...state.imageHistory, newHistoryItem];
           
           setState(prev => ({
             ...prev,
@@ -290,19 +275,6 @@ export default function Home() {
             <div className="space-y-8">
               {/* Current Image */}
               <div className="space-y-4">
-                {!currentImageInfo.title.includes('Original') && (
-                  <div className="flex justify-end mb-4">
-                    <Button 
-                      onClick={handleDownload} 
-                      className="flex items-center gap-2 font-sans font-bold"
-                      variant="default"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download
-                    </Button>
-                  </div>
-                )}
-                
                 <div className="relative w-full max-w-2xl mx-auto">
                   <ImagePreview src={currentImageUrl!} alt={currentImageInfo.title} />
                   {state.status === 'loading' && (

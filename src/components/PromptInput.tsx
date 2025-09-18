@@ -85,16 +85,6 @@ export function PromptInput({
 
       <div className="flex gap-3 justify-end">
         <Button
-          variant="outline"
-          onClick={onClear}
-          disabled={isLoading}
-          className="flex items-center gap-2 font-sans font-bold"
-        >
-          <RotateCcw className="h-4 w-4" />
-          Clear
-        </Button>
-        
-        <Button
           onClick={onGenerate}
           disabled={!canGenerate}
           className="flex items-center gap-2 min-w-[120px] font-sans font-bold"

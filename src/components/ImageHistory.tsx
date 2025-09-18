@@ -14,11 +14,13 @@ import { History, RotateCcw, Trash2, Image as ImageIcon } from 'lucide-react';
 interface ImageHistoryProps {
   history: HistoryItem[];
   currentId: string | null;
-  onRevert: (id: string) => void;
+  previewId?: string | null; // ID of the item being previewed (not committed)
+  onPreview: (id: string) => void; // Just preview the image
+  onRevert: (id: string) => void; // Actually revert to this version
   onClearHistory: () => void;
 }
 
-export function ImageHistory({ history, currentId, onRevert, onClearHistory }: ImageHistoryProps) {
+export function ImageHistory({ history, currentId, previewId, onPreview, onRevert, onClearHistory }: ImageHistoryProps) {
   const [showConfirmClear, setShowConfirmClear] = useState(false);
 
   if (history.length === 0) {
@@ -72,6 +74,7 @@ export function ImageHistory({ history, currentId, onRevert, onClearHistory }: I
           <Tooltip.Provider>
             {history.map((item, index) => {
               const isCurrent = item.id === currentId;
+              const isBeingPreviewed = item.id === previewId;
               const isAfterCurrent = currentIndex !== -1 && index > currentIndex;
               
               return (
@@ -81,13 +84,15 @@ export function ImageHistory({ history, currentId, onRevert, onClearHistory }: I
                       className={`
                         relative flex-shrink-0 w-32 h-32 p-2 cursor-pointer transition-all duration-200
                         ${isCurrent 
-                          ? 'ring-2 ring-primary bg-primary/10' 
-                          : isAfterCurrent 
-                            ? 'opacity-50' 
-                            : 'hover:bg-accent/50'
+                          ? 'ring-2 ring-green-500 bg-green-500/10' 
+                          : isBeingPreviewed
+                            ? 'ring-2 ring-blue-500 bg-blue-500/10'
+                            : isAfterCurrent 
+                              ? 'opacity-50' 
+                              : 'hover:bg-accent/50'
                         }
                       `}
-                      onClick={() => onRevert(item.id)}
+                      onClick={() => onPreview(item.id)}
                     >
                       <div className="w-full h-20 bg-muted rounded overflow-hidden mb-2">
                         <img
@@ -114,8 +119,12 @@ export function ImageHistory({ history, currentId, onRevert, onClearHistory }: I
                         {!isCurrent && (
                           <Button
                             size="sm"
-                            variant="outline"
-                            className="h-6 w-6 p-0 hover:bg-primary/20"
+                            variant={isBeingPreviewed ? "default" : "outline"}
+                            className={`h-6 w-6 p-0 ${
+                              isBeingPreviewed 
+                                ? 'bg-primary hover:bg-primary/90 text-primary-foreground' 
+                                : 'hover:bg-primary/20'
+                            }`}
                             onClick={(e) => {
                               e.stopPropagation();
                               onRevert(item.id);
@@ -128,7 +137,12 @@ export function ImageHistory({ history, currentId, onRevert, onClearHistory }: I
                       
                       {isCurrent && (
                         <div className="absolute -top-1 -right-1">
-                          <div className="w-3 h-3 bg-primary rounded-full border-2 border-background"></div>
+                          <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-background"></div>
+                        </div>
+                      )}
+                      {isBeingPreviewed && !isCurrent && (
+                        <div className="absolute -top-1 -left-1">
+                          <div className="w-3 h-3 bg-blue-500 rounded-full border-2 border-background"></div>
                         </div>
                       )}
                     </Card>
@@ -146,7 +160,9 @@ export function ImageHistory({ history, currentId, onRevert, onClearHistory }: I
                       </p>
                       {!isCurrent && (
                         <p className="font-sans text-xs text-primary font-medium">
-                          Click to revert to this version
+                          {isBeingPreviewed 
+                            ? 'Click ↻ button to revert to this version' 
+                            : 'Click to preview • Click ↻ to revert'}
                         </p>
                       )}
                     </div>

@@ -52,9 +52,12 @@ export async function editImage(formData: FormData): Promise<ImageEditResponse> 
     ]);
 
     const response = await result.response;
+    console.log('Full API response:', JSON.stringify(response, null, 2));
+    
     const candidates = response.candidates;
 
     if (!candidates || candidates.length === 0) {
+      console.log('No candidates in response');
       return {
         success: false,
         error: 'No image generated. Please try a different prompt.'
@@ -63,10 +66,38 @@ export async function editImage(formData: FormData): Promise<ImageEditResponse> 
 
     // Extract the generated image
     const candidate = candidates[0];
+    console.log('First candidate:', JSON.stringify(candidate, null, 2));
+    
+    // Check if content exists
+    if (!candidate.content) {
+      console.log('No content in candidate');
+      // Check if it was blocked by safety filters
+      if (candidate.finishReason === 'SAFETY') {
+        return {
+          success: false,
+          error: 'Content was blocked by safety filters. Please try a different prompt.'
+        };
+      }
+      return {
+        success: false,
+        error: 'No content returned from the API. Please try a different prompt.'
+      };
+    }
+    
     const parts = candidate.content.parts;
+    console.log('Parts:', JSON.stringify(parts, null, 2));
+    
+    if (!parts || parts.length === 0) {
+      return {
+        success: false,
+        error: 'No parts found in the response content.'
+      };
+    }
 
     for (const part of parts) {
+      console.log('Processing part:', JSON.stringify(part, null, 2));
       if (part.inlineData && part.inlineData.data) {
+        console.log('Found image data, length:', part.inlineData.data.length);
         return {
           success: true,
           data: part.inlineData.data
@@ -76,7 +107,7 @@ export async function editImage(formData: FormData): Promise<ImageEditResponse> 
 
     return {
       success: false,
-      error: 'No image data returned from the API.'
+      error: 'No image data found in the API response parts.'
     };
 
   } catch (error: unknown) {
