@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
 import { Skeleton } from '@/components/retroui/Skeleton';
+import { Loader } from '@/components/retroui/loader';
 
 interface ImagePreviewProps {
   src: string;
@@ -11,6 +12,7 @@ interface ImagePreviewProps {
   height?: number;
   className?: string;
   isMobile?: boolean;
+  isLoading?: boolean;
 }
 
 export function ImagePreview({ 
@@ -19,7 +21,8 @@ export function ImagePreview({
   width = 800, 
   height = 600, 
   className = "",
-  isMobile = false
+  isMobile = false,
+  isLoading: externalLoading = false
 }: ImagePreviewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -158,6 +161,23 @@ export function ImagePreview({
         priority
         unoptimized
       />
+      
+      {/* External Loading Overlay - Only covers the image */}
+      {externalLoading && (
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm rounded-lg flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <Loader variant="default" size="lg" count={5} duration={0.8} delayStep={150} className="justify-center" />
+            <div className="space-y-3">
+              <p className="font-head text-lg md:text-xl font-black text-white">
+                AI is generating your image...
+              </p>
+              <p className="font-sans text-sm text-white/80">
+                This may take a few moments
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

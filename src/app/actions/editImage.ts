@@ -7,49 +7,109 @@ export async function editImage(formData: FormData): Promise<ImageEditResponse> 
   try {
     const imageFile = formData.get('image') as File;
     const prompt = formData.get('prompt') as string;
-
-    if (!imageFile || !prompt) {
-      return {
-        success: false,
-        error: 'Missing image file or prompt'
-      };
+    
+    // Get additional images from FormData
+    const additionalImages: File[] = [];
+    const additionalImageEntries = formData.getAll('additionalImages');
+    for (const entry of additionalImageEntries) {
+      if (entry instanceof File && entry.size > 0) {
+        additionalImages.push(entry);
+      }
     }
 
-    // Validate file type
+    if (!prompt) {
+      return {
+        success: false,
+        error: 'Missing prompt'
+      };
+    }
+    
+    // Allow text-only requests for image generation
+    // No validation needed here - if there's a prompt, we can generate
+
+    // Validate file types only if imageFile exists
     const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
-    if (!validTypes.includes(imageFile.type)) {
+    if (imageFile && !validTypes.includes(imageFile.type)) {
       return {
         success: false,
         error: 'Invalid file type. Please upload a PNG, JPEG, or WebP image.'
       };
     }
-
-    // Validate file size (10MB limit)
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (imageFile.size > maxSize) {
-      return {
-        success: false,
-        error: 'File too large. Please upload an image smaller than 10MB.'
-      };
+    
+    // Validate additional image types
+    for (const additionalImage of additionalImages) {
+      if (!validTypes.includes(additionalImage.type)) {
+        return {
+          success: false,
+          error: `Invalid additional image type: ${additionalImage.type}. Please upload PNG, JPEG, or WebP images only.`
+        };
+      }
     }
 
-    // Convert image to base64
-    const bytes = await imageFile.arrayBuffer();
-    const base64Image = Buffer.from(bytes).toString('base64');
+    // Validate file size (10MB limit) only if imageFile exists
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (imageFile && imageFile.size > maxSize) {
+      return {
+        success: false,
+        error: 'Main image file too large. Please upload an image smaller than 10MB.'
+      };
+    }
+    
+    // Validate additional image sizes
+    for (const additionalImage of additionalImages) {
+      if (additionalImage.size > maxSize) {
+        return {
+          success: false,
+          error: `Additional image "${additionalImage.name}" is too large. Please upload images smaller than 10MB.`
+        };
+      }
+    }
+
+    // Convert main image to base64 if it exists
+    let base64Image = '';
+    if (imageFile) {
+      const bytes = await imageFile.arrayBuffer();
+      base64Image = Buffer.from(bytes).toString('base64');
+    }
+    
+    // Convert additional images to base64
+    const additionalImageData = [];
+    for (const additionalImage of additionalImages) {
+      const additionalBytes = await additionalImage.arrayBuffer();
+      const additionalBase64 = Buffer.from(additionalBytes).toString('base64');
+      additionalImageData.push({
+        inlineData: {
+          mimeType: additionalImage.type,
+          data: additionalBase64
+        }
+      });
+    }
 
     // Get Gemini model
     const model = getImageModel();
 
-    // Create the request
-    const result = await model.generateContent([
-      {
+    // Create the request content array
+    // Format: [originalImage?, ...additionalImages, promptText] as per Gemini API best practices
+    const requestContent = [];
+    
+    // Add main image if it exists
+    if (imageFile) {
+      requestContent.push({
         inlineData: {
           mimeType: imageFile.type,
           data: base64Image
         }
-      },
-      prompt
-    ]);
+      });
+    }
+    
+    // Add additional images
+    requestContent.push(...additionalImageData);
+    
+    // Add prompt text
+    requestContent.push({ text: prompt });
+
+    // Create the request
+    const result = await model.generateContent(requestContent);
 
     const response = await result.response;
     console.log('Full API response:', JSON.stringify(response, null, 2));

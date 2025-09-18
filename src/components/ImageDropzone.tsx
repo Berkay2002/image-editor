@@ -3,10 +3,12 @@
 import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Alert } from '@/components/retroui/Alert';
-import { Upload } from 'lucide-react';
+import { Button } from '@/components/retroui/Button';
+import { Upload, ArrowRight } from 'lucide-react';
 
 interface ImageDropzoneProps {
   onImageSelect: (file: File) => void;
+  onSkip?: () => void;
   error?: string;
 }
 
@@ -17,7 +19,7 @@ const ACCEPTED_TYPES = {
   'image/webp': ['.webp']
 };
 
-export function ImageDropzone({ onImageSelect, error }: ImageDropzoneProps) {
+export function ImageDropzone({ onImageSelect, onSkip, error }: ImageDropzoneProps) {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
@@ -42,7 +44,7 @@ export function ImageDropzone({ onImageSelect, error }: ImageDropzoneProps) {
     : null;
 
   return (
-    <div className="w-full max-w-none md:max-w-2xl mx-auto">
+    <div className="w-full max-w-none md:max-w-2xl mx-auto space-y-6">
       <div
         {...getRootProps()}
         className={`
@@ -74,6 +76,25 @@ export function ImageDropzone({ onImageSelect, error }: ImageDropzoneProps) {
           </div>
         )}
       </div>
+      
+      {/* Skip Option */}
+      {onSkip && (
+        <div className="text-center space-y-3">
+          <div className="flex items-center justify-center space-x-4">
+            <div className="flex-1 h-px bg-border"></div>
+            <span className="font-sans text-sm text-muted-foreground px-2">or</span>
+            <div className="flex-1 h-px bg-border"></div>
+          </div>
+          <Button
+            onClick={onSkip}
+            variant="outline"
+            className="w-full md:w-auto"
+          >
+            Skip and use text only
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {(error || rejectionError) && (
         <Alert className="mt-4" status="error">

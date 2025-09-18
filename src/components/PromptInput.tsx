@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Textarea } from '@/components/retroui/Textarea';
 import { Button } from '@/components/retroui/Button';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Plus, X } from 'lucide-react';
 
 interface PromptInputProps {
   prompt: string;
@@ -11,6 +11,8 @@ interface PromptInputProps {
   onGenerate: () => void;
   isLoading?: boolean;
   disabled?: boolean;
+  additionalImages?: File[];
+  onAdditionalImagesChange?: (images: File[]) => void;
 }
 
 const MAX_PROMPT_LENGTH = 1000;
@@ -20,9 +22,12 @@ export function PromptInput({
   onPromptChange,
   onGenerate,
   isLoading = false,
-  disabled = false
+  disabled = false,
+  additionalImages = [],
+  onAdditionalImagesChange
 }: PromptInputProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const characterCount = prompt.length;
   const isOverLimit = characterCount > MAX_PROMPT_LENGTH;
@@ -38,10 +43,73 @@ export function PromptInput({
     }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0 && onAdditionalImagesChange) {
+      // Validate file types
+      const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+      const validFiles = Array.from(files).filter(file => validTypes.includes(file.type));
+      
+      if (validFiles.length > 0) {
+        const newImages = [...additionalImages, ...validFiles].slice(0, 3); // Max 3 additional images
+        onAdditionalImagesChange(newImages);
+      }
+    }
+    // Reset the input value so the same file can be selected again
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
+
+  const handleImageRemove = (index: number) => {
+    if (onAdditionalImagesChange) {
+      const newImages = additionalImages.filter((_, i) => i !== index);
+      onAdditionalImagesChange(newImages);
+    }
+  };
+
+  const openImageUpload = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div className="w-full space-y-3">
-      {/* Input Row with Textarea and Button */}
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        multiple
+        onChange={handleImageUpload}
+        className="hidden"
+      />
+      
+      {/* Additional Images Preview */}
+      {additionalImages.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {additionalImages.map((image, index) => (
+            <div key={index} className="relative group">
+              <div className="w-16 h-16 bg-muted rounded border-2 border-border overflow-hidden">
+                <img
+                  src={URL.createObjectURL(image)}
+                  alt={`Additional image ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <button
+                onClick={() => handleImageRemove(index)}
+                className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/80"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* Input Row: Textarea, Plus Icon Button, Generate Button */}
       <div className="flex gap-2 items-end">
+        {/* Textarea */}
         <div className="flex-1 relative">
           <Textarea
             id="prompt"
@@ -68,6 +136,17 @@ export function PromptInput({
             {characterCount > 0 && `${characterCount}/${MAX_PROMPT_LENGTH}`}
           </div>
         </div>
+        
+        {/* Plus Icon Button */}
+        <Button
+          onClick={openImageUpload}
+          disabled={isLoading || disabled || additionalImages.length >= 3}
+          variant="outline"
+          className="h-[80px] w-12 flex items-center justify-center p-0 flex-shrink-0"
+          size="sm"
+        >
+          <Plus className="h-5 w-5" />
+        </Button>
         
         {/* Generate Button */}
         <Button

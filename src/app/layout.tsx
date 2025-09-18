@@ -8,6 +8,7 @@ const archivoBlack = Archivo_Black({
   weight: "400",
   variable: "--font-head",
   display: "swap",
+  preload: false,
 });
 
 const space = Space_Grotesk({
@@ -15,6 +16,7 @@ const space = Space_Grotesk({
   weight: "400",
   variable: "--font-sans",
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
